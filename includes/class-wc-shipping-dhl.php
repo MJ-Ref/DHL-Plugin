@@ -14,6 +14,7 @@ use WooCommerce\DHL\API\REST\OAuth as REST_API_OAuth;
 use WooCommerce\DHL\API\REST\API_Client as REST_API_Client;
 use WooCommerce\DHL\Logger;
 use WooCommerce\DHL\Notifier;
+use WooCommerce\DHL\Util;
 use WooCommerce\BoxPacker\Abstract_Packer;
 use WooCommerce\BoxPacker\WC_Boxpack;
 
@@ -25,6 +26,8 @@ use WooCommerce\BoxPacker\WC_Boxpack;
  * @see     WC_Shipping_Method
  */
 class WC_Shipping_DHL extends WC_Shipping_Method {
+
+	use Util;
 
 	/**
 	 * DHL API user ID.
@@ -549,37 +552,9 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 			}
 		}
 
+		// Get API client and calculate shipping.
 		$api_client = $this->get_api_client( $package );
-
-		// Prepare package requests based on packing method.
-		$requests = $this->prepare_package_requests( $package );
-
-		if ( empty( $requests ) ) {
-			$this->debug( __( 'No packages to ship.', 'woocommerce-shipping-dhl' ), 'error' );
-			return;
-		}
-
-		$api_client->set_package_requests( $requests );
-
-		// Get the shipping rates.
-		$rates = $api_client->get_rates();
-
-		if ( empty( $rates ) ) {
-			$this->debug( __( 'No shipping rates returned from DHL.', 'woocommerce-shipping-dhl' ), 'error' );
-
-			// Use fallback rate if available.
-			if ( ! empty( $this->fallback ) ) {
-				$this->add_rate( array(
-					'id'    => $this->get_rate_id( 'fallback' ),
-					'label' => $this->title,
-					'cost'  => $this->fallback,
-				) );
-			}
-			return;
-		}
-
-		// Filter rates based on settings.
-		$this->process_and_add_rates( $rates );
+		$api_client->calculate_shipping( $package );
 	}
 
 	/**

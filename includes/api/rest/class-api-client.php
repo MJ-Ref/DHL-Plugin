@@ -12,12 +12,15 @@ defined( 'ABSPATH' ) || exit;
 use WC_Product;
 use WooCommerce\DHL\API\Abstract_API_Client;
 use WooCommerce\DHL\Notifier;
+use WooCommerce\DHL\Util;
 use WP_Error;
 
 /**
  * API_Client class.
  */
 class API_Client extends Abstract_API_Client {
+	
+	use Util;
 
 	/**
 	 * Endpoint for the DHL Rate API.
@@ -448,6 +451,110 @@ class API_Client extends Abstract_API_Client {
 		}
 
 		return ! empty( $meta_data ) ? $meta_data : false;
+	}
+
+	/**
+	 * Calculate shipping rates.
+	 *
+	 * @param array $package Package to ship.
+	 * @return void
+	 */
+	public function calculate_shipping( $package ) {
+		$this->set_package( $package );
+		
+		// Prepare package requests based on packing method.
+		$requests = $this->shipping_method->prepare_package_requests( $package );
+		
+		if ( empty( $requests ) ) {
+			$this->shipping_method->debug( __( 'No packages to ship.', 'woocommerce-shipping-dhl' ), 'error' );
+			return;
+		}
+		
+		$this->set_package_requests( $requests );
+		
+		// Get the shipping rates.
+		$rates = $this->get_rates();
+		
+		if ( empty( $rates ) ) {
+			$this->shipping_method->debug( __( 'No shipping rates returned from DHL.', 'woocommerce-shipping-dhl' ), 'error' );
+
+			// Use fallback rate if available.
+			if ( ! empty( $this->shipping_method->fallback ) ) {
+				$this->shipping_method->add_rate( array(
+					'id'    => $this->shipping_method->get_rate_id( 'fallback' ),
+					'label' => $this->shipping_method->title,
+					'cost'  => $this->shipping_method->fallback,
+				) );
+			}
+			return;
+		}
+
+		// Process and add the rates.
+		$this->shipping_method->process_and_add_rates( $rates );
+	}
+
+	/**
+	 * Validate the API credentials.
+	 *
+	 * @return bool
+	 */
+	public function validate_credentials() {
+		$access_token = $this->shipping_method->get_dhl_oauth()->get_access_token();
+		
+		if ( ! $access_token ) {
+			return false;
+		}
+		
+		// Create a simple API request to test credentials
+		$api_url = $this->get_api_url() . '/products';
+		$request = array(
+			'customerDetails' => array(
+				'shipperDetails' => array(
+					'postalCode'  => $this->shipping_method->get_origin_postcode(),
+					'cityName'    => $this->shipping_method->get_origin_city(),
+					'countryCode' => $this->shipping_method->get_origin_country(),
+				),
+				'receiverDetails' => array(
+					'postalCode'  => $this->shipping_method->get_origin_postcode(),
+					'cityName'    => $this->shipping_method->get_origin_city(),
+					'countryCode' => $this->shipping_method->get_origin_country(),
+				),
+			),
+			'accounts' => array(
+				array(
+					'typeCode'   => 'shipper',
+					'number'     => $this->shipping_method->get_shipper_number(),
+				),
+			),
+			'plannedShippingDateAndTime' => date( 'Y-m-d\TH:i:s \G\M\TP', strtotime( '+1 day' ) ),
+		);
+		
+		$headers = array(
+			'Authorization' => 'Basic ' . $access_token,
+			'Content-Type'  => 'application/json',
+		);
+		
+		$response = wp_remote_get(
+			add_query_arg( $request, $api_url ),
+			array(
+				'headers' => $headers,
+				'timeout' => 30,
+			)
+		);
+		
+		if ( is_wp_error( $response ) ) {
+			$this->shipping_method->debug( __( 'DHL API credentials validation failed: ', 'woocommerce-shipping-dhl' ) . $response->get_error_message(), 'error' );
+			return false;
+		}
+		
+		$response_code = wp_remote_retrieve_response_code( $response );
+		
+		if ( 200 !== $response_code ) {
+			$this->shipping_method->debug( __( 'DHL API credentials validation failed. HTTP response code: ', 'woocommerce-shipping-dhl' ) . $response_code, 'error' );
+			return false;
+		}
+		
+		return true;
 	}
 
 	/**

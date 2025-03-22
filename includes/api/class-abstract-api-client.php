@@ -122,6 +122,14 @@ abstract class Abstract_API_Client {
 	}
 
 	/**
+	 * Calculate shipping cost.
+	 *
+	 * @param array $package Package to ship.
+	 * @return void
+	 */
+	abstract public function calculate_shipping( $package );
+
+	/**
 	 * Get the shipping rates.
 	 *
 	 * @return array
@@ -135,6 +143,13 @@ abstract class Abstract_API_Client {
 	 * @return void
 	 */
 	abstract public function validate_destination_address( $destination_address );
+
+	/**
+	 * Perform a request to check API credentials.
+	 *
+	 * @return bool
+	 */
+	abstract public function validate_credentials();
 
 	/**
 	 * Get product dimensions sorted by size in descending order.
@@ -260,14 +275,14 @@ abstract class Abstract_API_Client {
 	 * @return array
 	 */
 	protected function maybe_get_packed_box_details_meta( $meta_data, $request_object, $box_number ) {
-		if ( ! isset( $request_object->Dimensions ) ) {
+		if ( ! isset( $request_object->dimensions ) ) {
 			return $meta_data;
 		}
 
-		$length = $request_object->Dimensions->Length ?? '';
-		$width  = $request_object->Dimensions->Width ?? '';
-		$height = $request_object->Dimensions->Height ?? '';
-		$weight = $request_object->PackageWeight->Weight ?? '';
+		$length = $request_object->dimensions->length ?? '';
+		$width  = $request_object->dimensions->width ?? '';
+		$height = $request_object->dimensions->height ?? '';
+		$weight = $request_object->weight->value ?? '';
 
 		if ( empty( $length ) || empty( $width ) || empty( $height ) || empty( $weight ) ) {
 			return $meta_data;
@@ -278,11 +293,11 @@ abstract class Abstract_API_Client {
 				'length' => $length,
 				'width'  => $width,
 				'height' => $height,
-				'unit'   => $request_object->Dimensions->UnitOfMeasurement->Code ?? '',
+				'unit'   => $request_object->dimensions->unitOfMeasurement ?? '',
 			),
 			'weight'     => array(
 				'value' => $weight,
-				'unit'  => $request_object->PackageWeight->UnitOfMeasurement->Code ?? '',
+				'unit'  => $request_object->weight->unitOfMeasurement ?? '',
 			),
 		);
 

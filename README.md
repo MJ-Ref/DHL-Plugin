@@ -14,11 +14,35 @@ This plugin integrates DHL Express shipping rates and services with your WooComm
 
 ## Installation
 
-1. Upload the plugin files to the `/wp-content/plugins/woocommerce-shipping-dhl` directory, or install the plugin through the WordPress plugins screen.
-2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Navigate to WooCommerce > Settings > Shipping > Shipping Zones
-4. Add DHL as a shipping method to your desired shipping zones
-5. Configure the DHL settings with your API credentials and shipping preferences
+### Automatic Installation
+1. Log in to your WordPress dashboard
+2. Navigate to Plugins → Add New
+3. Search for "WooCommerce DHL Shipping"
+4. Click "Install Now" and then "Activate"
+
+### Manual Installation
+1. Download the plugin zip file
+2. Log in to your WordPress dashboard
+3. Navigate to Plugins → Add New
+4. Click "Upload Plugin"
+5. Upload the zip file
+6. Activate the plugin
+
+### Post-Installation
+1. After installation, run the following commands in the plugin directory to install dependencies:
+   ```
+   composer install
+   ```
+2. Navigate to WooCommerce → Settings → Shipping → Shipping Zones
+3. Add DHL as a shipping method to your desired shipping zones
+4. Configure the DHL settings with your API credentials and shipping preferences
+
+### Dependencies
+This plugin requires the following dependencies:
+- PHP 7.4 or higher
+- WooCommerce 9.5 or higher
+- WordPress 6.6 or higher
+- WooCommerce BoxPacker library (installed automatically via Composer)
 
 ## Configuration
 
@@ -64,7 +88,10 @@ Select and customize the DHL services you want to offer:
 
 ## Support
 
-For support, please contact [support@yourwebsite.com](mailto:support@yourwebsite.com).
+For plugin support and inquiries:
+- Visit our [Help Center](https://woocommerce.com/my-account/create-a-ticket/)
+- Email us at [help@woocommerce.com](mailto:help@woocommerce.com)
+- Visit our [documentation](https://docs.woocommerce.com/document/woocommerce-shipping-and-tax/)
 
 ## License
 

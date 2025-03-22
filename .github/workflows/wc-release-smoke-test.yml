@@ -1,0 +1,102 @@
+name: WC Release Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      wc_version:
+        description: 'WooCommerce version to test with'
+        required: true
+        default: 'latest'
+        type: string
+
+jobs:
+  test:
+    name: Test with WooCommerce ${{ github.event.inputs.wc_version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.0', '8.1']
+        wordpress: ['6.6', 'latest']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Setup WordPress test environment
+        run: |
+          bash bin/install-wp-tests.sh wordpress_test root '' localhost ${{ matrix.wordpress }}
+          
+      - name: Install WooCommerce
+        run: |
+          wp plugin install woocommerce --version=${{ github.event.inputs.wc_version }} --activate
+          wp plugin status
+
+      - name: Run PHPUnit tests
+        run: composer run-script test
+
+  integration:
+    name: Integration Test with WooCommerce ${{ github.event.inputs.wc_version }}
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup environment
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 7.4
+          extensions: mysql, mysqli
+
+      - name: Setup MySQL
+        run: |
+          sudo systemctl start mysql.service
+
+      - name: Install WordPress
+        run: |
+          wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+          mkdir -p /tmp/wordpress
+          cd /tmp/wordpress
+          wp core download --version=latest
+          wp config create --dbname=wordpress_test --dbuser=root --dbpass='' --dbhost=localhost
+          wp db create
+          wp core install --url=localhost --title="DHL Test Site" --admin_user=admin --admin_password=password --admin_email=admin@example.com
+
+      - name: Install and activate WooCommerce
+        run: |
+          cd /tmp/wordpress
+          wp plugin install woocommerce --version=${{ github.event.inputs.wc_version }} --activate
+          
+      - name: Install and activate plugin
+        run: |
+          cd /tmp/wordpress
+          cp -r $GITHUB_WORKSPACE wp-content/plugins/woocommerce-shipping-dhl
+          wp plugin activate woocommerce-shipping-dhl
+          wp plugin status
+
+      - name: Run basic integration test
+        run: |
+          cd /tmp/wordpress
+          # Add a basic smoke test
+          if ! wp eval 'echo (class_exists("WooCommerce\DHL\WC_Shipping_DHL") ? "Plugin loaded" : "Plugin failed to load");'; then
+            echo "Integration test failed: Plugin did not load correctly"
+            exit 1
+          fi 

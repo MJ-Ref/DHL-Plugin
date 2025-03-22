@@ -5,16 +5,16 @@
  * @package WC_Shipping_DHL
  */
 
+namespace WooCommerce\DHL;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+use WC_Shipping_Method;
 use WooCommerce\DHL\API\Abstract_API_Client;
 use WooCommerce\DHL\API\REST\OAuth as REST_API_OAuth;
 use WooCommerce\DHL\API\REST\API_Client as REST_API_Client;
-use WooCommerce\DHL\Logger;
-use WooCommerce\DHL\Notifier;
-use WooCommerce\DHL\Util;
 use WooCommerce\BoxPacker\Abstract_Packer;
 use WooCommerce\BoxPacker\WC_Boxpack;
 
@@ -1006,42 +1006,15 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return array
 	 */
 	public function get_dhl_services() {
-		return array(
-			'0' => __( 'DHL Express Worldwide', 'woocommerce-shipping-dhl' ),
-			'1' => __( 'DHL Express Domestic', 'woocommerce-shipping-dhl' ),
-			'2' => __( 'DHL Express 9:00', 'woocommerce-shipping-dhl' ),
-			'3' => __( 'DHL Express 10:30', 'woocommerce-shipping-dhl' ),
-			'4' => __( 'DHL Express 12:00', 'woocommerce-shipping-dhl' ),
-			'5' => __( 'DHL Express Easy', 'woocommerce-shipping-dhl' ),
-			'7' => __( 'DHL Economy Select', 'woocommerce-shipping-dhl' ),
-			'8' => __( 'DHL Express 12:00', 'woocommerce-shipping-dhl' ),
-			'9' => __( 'DHL Express Envelope', 'woocommerce-shipping-dhl' ),
-			'B' => __( 'DHL Express Breakbulk', 'woocommerce-shipping-dhl' ),
-			'C' => __( 'DHL Express Medical Express', 'woocommerce-shipping-dhl' ),
-			'D' => __( 'DHL Express Express 9:00', 'woocommerce-shipping-dhl' ),
-			'E' => __( 'DHL Express Express 10:30', 'woocommerce-shipping-dhl' ),
-			'F' => __( 'DHL Express Freight Worldwide', 'woocommerce-shipping-dhl' ),
-			'G' => __( 'DHL Express Domestic Economy Select', 'woocommerce-shipping-dhl' ),
-			'H' => __( 'DHL Express Economy Select', 'woocommerce-shipping-dhl' ),
-			'I' => __( 'DHL Express Break Bulk Economy', 'woocommerce-shipping-dhl' ),
-			'J' => __( 'DHL Express Jumbo Box', 'woocommerce-shipping-dhl' ),
-			'K' => __( 'DHL Express Express 9:00', 'woocommerce-shipping-dhl' ),
-			'L' => __( 'DHL Express Express 10:30', 'woocommerce-shipping-dhl' ),
-			'M' => __( 'DHL Express Express 12:00', 'woocommerce-shipping-dhl' ),
-			'N' => __( 'DHL Express Domestic Express', 'woocommerce-shipping-dhl' ),
-			'O' => __( 'DHL Express Others', 'woocommerce-shipping-dhl' ),
-			'P' => __( 'DHL Express Worldwide', 'woocommerce-shipping-dhl' ),
-			'Q' => __( 'DHL Express Medical Express', 'woocommerce-shipping-dhl' ),
-			'R' => __( 'DHL Express GlobalMail Business', 'woocommerce-shipping-dhl' ),
-			'S' => __( 'DHL Express Same Day', 'woocommerce-shipping-dhl' ),
-			'T' => __( 'DHL Express Express 12:00', 'woocommerce-shipping-dhl' ),
-			'U' => __( 'DHL Express Express Worldwide', 'woocommerce-shipping-dhl' ),
-			'V' => __( 'DHL Express Europack', 'woocommerce-shipping-dhl' ),
-			'W' => __( 'DHL Express Economy Select', 'woocommerce-shipping-dhl' ),
-			'X' => __( 'DHL Express Express Envelope', 'woocommerce-shipping-dhl' ),
-			'Y' => __( 'DHL Express Express 12:00', 'woocommerce-shipping-dhl' ),
-			'Z' => __( 'DHL Express Destination Charges', 'woocommerce-shipping-dhl' ),
-		);
+		$services = $this->get_dhl_services_from_data();
+		
+		// Format services to just service name for display
+		$formatted_services = array();
+		foreach ( $services as $code => $service ) {
+			$formatted_services[ $code ] = __( $service['name'], 'woocommerce-shipping-dhl' );
+		}
+		
+		return $formatted_services;
 	}
 
 	/**

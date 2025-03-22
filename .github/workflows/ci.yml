@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [ trunk, develop ]
+  pull_request:
+    branches: [ trunk, develop ]
+
+jobs:
+  php-lint:
+    name: PHP Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHP CodeSniffer
+        run: composer run-script phpcs
+
+  phpunit:
+    name: PHPUnit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.0']
+        wp: ['6.6', 'latest']
+        wc: ['9.5', 'latest']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHPUnit
+        run: composer run-script test
+
+  js-lint:
+    name: JS Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JS linting
+        run: npm run lint:js
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHPCS security scan
+        run: vendor/bin/phpcs --standard=.phpcs.security.xml 

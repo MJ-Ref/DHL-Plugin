@@ -1,0 +1,13 @@
+*** DHL Shipping ***
+
+2025-03-22 - version 1.0.0
+* Initial release of WooCommerce DHL Shipping plugin.
+* Add   - DHL Express API integration.
+* Add   - Live rate calculation from DHL Express API.
+* Add   - Multiple packing methods: per item, box packing, and weight-based.
+* Add   - Custom box definitions.
+* Add   - Configurable service options and price adjustments.
+* Add   - Address validation.
+* Add   - Fallback rates when API is unavailable.
+* Add   - Modern admin UI for shipping settings.
+* Add   - WooCommerce Blocks compatibility. 

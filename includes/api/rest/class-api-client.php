@@ -33,6 +33,13 @@ class API_Client extends Abstract_API_Client {
 	);
 
 	/**
+	 * Current API version.
+	 *
+	 * @var string
+	 */
+	protected static string $api_version = WC_SHIPPING_DHL_API_VERSION;
+
+	/**
 	 * Get the API base URL based on environment.
 	 *
 	 * @return string
@@ -43,47 +50,114 @@ class API_Client extends Abstract_API_Client {
 	}
 
 	/**
+	 * Get common headers for API requests.
+	 *
+	 * @param array $additional_headers Additional headers to include.
+	 * @return array
+	 */
+	private function get_request_headers( $additional_headers = array() ) {
+		$headers = array(
+			'Content-Type'  => 'application/json',
+			'Accept'        => 'application/json',
+			'x-version'     => self::$api_version,
+		);
+
+		return array_merge( $headers, $additional_headers );
+	}
+
+	/**
 	 * Make a request to the rate endpoint.
 	 *
 	 * @param array $request The formatted request.
 	 * @return array|WP_Error
 	 */
 	protected function post_rate_request( $request ) {
-		$access_token = $this->shipping_method->get_dhl_oauth()->get_access_token();
+		// Check if we're currently rate limited.
+		if ( $this->check_rate_limit() ) {
+			return new WP_Error( 'dhl_rate_limited', __( 'DHL API rate limit exceeded. Please try again later.', 'woocommerce-shipping-dhl' ) );
+		}
 
-		// If we don't have an access token, return an error.
-		if ( ! $access_token ) {
-			return new WP_Error( 'post_rate_request_error', __( 'DHL authentication failed.', 'woocommerce-shipping-dhl' ) );
+		// Get the OAuth token.
+		$oauth      = new OAuth( $this->shipping_method );
+		$access_token = $oauth->get_access_token();
+
+		if ( is_wp_error( $access_token ) ) {
+			return $access_token;
 		}
 
 		// Create the request headers.
-		$headers = array(
+		$headers = $this->get_request_headers( array(
 			'Authorization' => 'Basic ' . $access_token,
-			'Content-Type'  => 'application/json',
-		);
+		) );
 
 		/**
-		 * Filter the request body before sending it to the DHL API.
+		 * Filter the rate request.
 		 *
-		 * @param array  $request          The request body.
-		 * @param array  $package_requests The package requests.
-		 * @param array  $package          The package.
-		 * @param string $class            The class name.
-		 *
-		 * @since 1.0.0
+		 * @param array $request The rate request.
+		 * @param \WC_Shipping_DHL $shipping_method The shipping method.
 		 */
-		$body = apply_filters( 'woocommerce_shipping_dhl_request', $request, $this->package_requests, $this->package, get_class( $this ) );
+		$request = apply_filters( 'woocommerce_shipping_dhl_rate_request', $request, $this->shipping_method );
 
-		$api_url = $this->get_api_url() . '/rates';
+		// Log the API request if debug is enabled.
+		if ( $this->shipping_method->is_debug_mode_enabled() ) {
+			$this->shipping_method->debug(
+				'DHL API Request',
+				'notice',
+				$request
+			);
+		}
 
-		return wp_remote_post(
-			$api_url,
+		// Make the API request.
+		$response = wp_remote_post(
+			$this->get_api_url() . '/rates',
 			array(
 				'headers' => $headers,
-				'body'    => wp_json_encode( $body ),
+				'body'    => json_encode( $request ),
 				'timeout' => 30,
 			)
 		);
+
+		// Check for rate limiting.
+		if ( $this->is_rate_limited( $response ) ) {
+			return new WP_Error( 'dhl_rate_limited', __( 'DHL API rate limit exceeded. Please try again later.', 'woocommerce-shipping-dhl' ) );
+		}
+
+		// Check if the request was successful.
+		if ( is_wp_error( $response ) ) {
+			$this->shipping_method->debug( $response->get_error_message(), 'error' );
+			return $response;
+		}
+
+		// Check the response code.
+		$status_code = wp_remote_retrieve_response_code( $response );
+		
+		if ( $status_code < 200 || $status_code >= 300 ) {
+			$error_body = wp_remote_retrieve_body( $response );
+			$error_data = json_decode( $error_body, true );
+			$error_message = isset( $error_data['error']['message'] ) 
+				? $error_data['error']['message'] 
+				: sprintf( __( 'DHL API returned HTTP status %d', 'woocommerce-shipping-dhl' ), $status_code );
+			
+			$this->shipping_method->debug( $error_message, 'error', json_decode( $error_body, true ) );
+			
+			// Add user-facing notice for admin users.
+			if ( is_admin() && current_user_can( 'manage_woocommerce' ) ) {
+				Notifier::add_notice( $error_message, 'error' );
+			}
+			
+			return new WP_Error( 'dhl_api_error', $error_message );
+		}
+		
+		// Log the API response.
+		if ( $this->shipping_method->is_debug_mode_enabled() ) {
+			$this->shipping_method->debug(
+				'DHL API Response',
+				'notice',
+				json_decode( wp_remote_retrieve_body( $response ), true )
+			);
+		}
+		
+		return $response;
 	}
 
 	/**
@@ -494,67 +568,54 @@ class API_Client extends Abstract_API_Client {
 	}
 
 	/**
-	 * Validate the API credentials.
+	 * Validate API credentials by making a simple test request.
 	 *
-	 * @return bool
+	 * @return bool True if credentials are valid, false otherwise.
 	 */
 	public function validate_credentials() {
-		$access_token = $this->shipping_method->get_dhl_oauth()->get_access_token();
-		
-		if ( ! $access_token ) {
+		// Get the OAuth token.
+		$oauth = new OAuth( $this->shipping_method );
+		$access_token = $oauth->get_access_token();
+
+		if ( is_wp_error( $access_token ) ) {
 			return false;
 		}
-		
-		// Create a simple API request to test credentials
-		$api_url = $this->get_api_url() . '/products';
-		$request = array(
-			'customerDetails' => array(
-				'shipperDetails' => array(
-					'postalCode'  => $this->shipping_method->get_origin_postcode(),
-					'cityName'    => $this->shipping_method->get_origin_city(),
-					'countryCode' => $this->shipping_method->get_origin_country(),
-				),
-				'receiverDetails' => array(
-					'postalCode'  => $this->shipping_method->get_origin_postcode(),
-					'cityName'    => $this->shipping_method->get_origin_city(),
-					'countryCode' => $this->shipping_method->get_origin_country(),
-				),
-			),
-			'accounts' => array(
-				array(
-					'typeCode'   => 'shipper',
-					'number'     => $this->shipping_method->get_shipper_number(),
-				),
-			),
-			'plannedShippingDateAndTime' => date( 'Y-m-d\TH:i:s \G\M\TP', strtotime( '+1 day' ) ),
-		);
-		
-		$headers = array(
+
+		// Create the request headers.
+		$headers = $this->get_request_headers( array(
 			'Authorization' => 'Basic ' . $access_token,
-			'Content-Type'  => 'application/json',
+		) );
+
+		// Create a simple test request to validate credentials.
+		// Using address validation as it's a lightweight API call.
+		$test_request = array(
+			'countryCode' => 'US',
 		);
-		
+
+		// Make the API request.
 		$response = wp_remote_get(
-			add_query_arg( $request, $api_url ),
+			$this->get_api_url() . '/address-validate?' . http_build_query( $test_request ),
 			array(
 				'headers' => $headers,
 				'timeout' => 30,
 			)
 		);
-		
+
+		// If rate limited, return false.
+		if ( $this->is_rate_limited( $response ) ) {
+			return false;
+		}
+
+		// If the request failed, return false.
 		if ( is_wp_error( $response ) ) {
-			$this->shipping_method->debug( __( 'DHL API credentials validation failed: ', 'woocommerce-shipping-dhl' ) . $response->get_error_message(), 'error' );
 			return false;
 		}
+
+		// Check the response code.
+		$status_code = wp_remote_retrieve_response_code( $response );
 		
-		$response_code = wp_remote_retrieve_response_code( $response );
-		
-		if ( 200 !== $response_code ) {
-			$this->shipping_method->debug( __( 'DHL API credentials validation failed. HTTP response code: ', 'woocommerce-shipping-dhl' ) . $response_code, 'error' );
-			return false;
-		}
-		
-		return true;
+		// 200-299 range indicates successful request.
+		return $status_code >= 200 && $status_code < 300;
 	}
 
 	/**
@@ -599,5 +660,46 @@ class API_Client extends Abstract_API_Client {
 
 		// Set whether the destination address is valid.
 		$this->set_is_valid_destination_address( $this->get_address_validator() );
+	}
+
+	/**
+	 * Handle potential rate limiting issues.
+	 *
+	 * @param \WP_Error|array $response API response.
+	 * @return boolean True if rate limited, false otherwise.
+	 */
+	private function is_rate_limited( $response ) {
+		if ( is_wp_error( $response ) ) {
+			return false;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+
+		// 429 = Too Many Requests.
+		if ( 429 === $response_code ) {
+			// Store a transient to block requests for 5 minutes.
+			set_transient( 'wc_dhl_rate_limited', true, 5 * MINUTE_IN_SECONDS );
+			
+			$error_message = __( 'DHL API rate limit exceeded. Please try again later.', 'woocommerce-shipping-dhl' );
+			$this->shipping_method->debug( $error_message, 'error' );
+			
+			// Add user-facing notice for admin users.
+			if ( is_admin() && current_user_can( 'manage_woocommerce' ) ) {
+				Notifier::add_notice( $error_message, 'error', 'rate_limit' );
+			}
+			
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if the API is currently rate limited.
+	 *
+	 * @return boolean
+	 */
+	private function check_rate_limit() {
+		return (bool) get_transient( 'wc_dhl_rate_limited' );
 	}
 }

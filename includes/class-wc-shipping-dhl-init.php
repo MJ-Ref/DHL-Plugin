@@ -5,6 +5,8 @@
  * @package WC_Shipping_DHL
  */
 
+namespace WooCommerce\DHL;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -50,6 +52,15 @@ class WC_Shipping_DHL_Init {
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-logger.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-notifier.php';
+		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-dhl-privacy.php';
+		
+		// Admin classes.
+		if ( is_admin() ) {
+			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl-admin.php';
+			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-product-editor.php';
+			new WC_Shipping_DHL_Admin();
+			new Product_Editor();
+		}
 		
 		// API classes.
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/class-abstract-api-client.php';
@@ -84,7 +95,7 @@ class WC_Shipping_DHL_Init {
 	 * @return array
 	 */
 	public function add_shipping_method( $methods ) {
-		$methods['dhl'] = 'WC_Shipping_DHL';
+		$methods['dhl'] = 'WooCommerce\DHL\WC_Shipping_DHL';
 		return $methods;
 	}
 

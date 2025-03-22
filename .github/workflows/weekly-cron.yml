@@ -1,0 +1,74 @@
+name: Weekly Cron Job
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Run at midnight on Monday
+
+jobs:
+  php-compat:
+    name: PHP Compatibility Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2, phpcs, phpcompat
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHP Compatibility Check
+        run: phpcs --standard=PHPCompatibility --runtime-set testVersion 7.4- --extensions=php .
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHPCS security scan
+        run: vendor/bin/phpcs --standard=.phpcs.security.xml
+
+  dependency-updates:
+    name: Check for Dependency Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Check for npm package updates
+        run: |
+          npm install -g npm-check-updates
+          ncu
+
+      - name: Check for composer package updates
+        run: |
+          composer outdated --direct 

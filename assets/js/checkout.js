@@ -1,9 +1,11 @@
 /**
- * DHL Checkout Scripts
+ * DHL Shipping Checkout JavaScript
  */
-jQuery(function($) {
-    // Trigger update checkout when country, state, postcode, or city fields are updated
-    $(document.body).on('change', 'select.country_to_state, input.input-text.state, input.input-text.postcode, input.input-text.city', function() {
-        $(document.body).trigger('update_checkout');
-    });
+jQuery( function( $ ) {
+	'use strict';
+
+	// Refresh shipping methods when the address is updated
+	$( document.body ).on( 'updated_checkout', function() {
+		// Add DHL specific logic here if needed
+	});
 });

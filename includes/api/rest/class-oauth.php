@@ -44,70 +44,80 @@ class OAuth {
 	}
 
 	/**
-	 * Get the access token for API authentication.
+	 * Get access token from cache or authenticate.
 	 *
-	 * @return string|false
+	 * @return string|WP_Error
 	 */
 	public function get_access_token() {
-		// Check for a cached token first.
-		$cached_token = $this->get_cached_token();
-		if ( false !== $cached_token ) {
-			return $cached_token;
+		// Try to get the token from cache first.
+		$token = $this->get_cached_token();
+		
+		if ( $token ) {
+			return $token;
 		}
-
+		
 		// If no cached token, authenticate and get a new one.
 		return $this->authenticate();
 	}
 
 	/**
-	 * Get the cached token if it exists and is not expired.
+	 * Get cached access token.
 	 *
 	 * @return string|false
 	 */
 	private function get_cached_token() {
-		$token_data = get_transient( 'wc_dhl_api_token' );
-
-		if ( false === $token_data ) {
+		$transient_key = 'wc_dhl_access_token_' . md5( $this->shipping_method->get_option( 'api_user' ) );
+		$token_data = get_transient( $transient_key );
+		
+		if ( ! $token_data ) {
 			return false;
 		}
-
-		// Check if the token is expired.
-		$expires_at = isset( $token_data['expires_at'] ) ? $token_data['expires_at'] : 0;
-		if ( time() >= $expires_at ) {
-			// Delete the expired token.
-			delete_transient( 'wc_dhl_api_token' );
+		
+		// Expires 5 minutes before actual expiration as a safety buffer.
+		$expiry_buffer = 5 * MINUTE_IN_SECONDS;
+		
+		if ( time() > ( $token_data['timestamp'] + $token_data['expires_in'] - $expiry_buffer ) ) {
+			// Token is expired or about to expire.
+			delete_transient( $transient_key );
 			return false;
 		}
-
-		return isset( $token_data['token'] ) ? $token_data['token'] : false;
+		
+		$this->logger->info( 'Using cached DHL OAuth token.' );
+		
+		return $token_data['access_token'];
 	}
 
 	/**
-	 * Authenticate with the DHL API and get an access token.
+	 * Authenticate with DHL API.
 	 *
-	 * @return string|false
+	 * @return string|WP_Error
 	 */
 	private function authenticate() {
-		// DHL MyDHL API uses Basic Auth for authentication.
+		$this->logger->info( 'Authenticating with DHL API...' );
+		
 		$api_user = $this->shipping_method->get_option( 'api_user' );
-		$api_key  = $this->shipping_method->get_option( 'api_key' );
-
+		$api_key = $this->shipping_method->get_option( 'api_key' );
+		
 		if ( empty( $api_user ) || empty( $api_key ) ) {
-			$this->logger->error( __( 'DHL API credentials are missing. Please check your settings.', 'woocommerce-shipping-dhl' ) );
-			return false;
+			return new WP_Error( 'missing_credentials', __( 'DHL API credentials are missing. Please configure the DHL shipping method.', 'woocommerce-shipping-dhl' ) );
 		}
-
-		// For DHL, we'll use the API credentials directly, as it uses Basic Auth instead of OAuth tokens
-		$token = base64_encode( $api_user . ':' . $api_key );
-
-		// Store the token as a transient (cached for 23 hours to be safe)
+		
+		// Create Basic Auth token.
+		$access_token = base64_encode( $api_user . ':' . $api_key );
+		
+		// Store the token in transient for 23 hours (DHL tokens last 24 hours).
+		// Adding a timestamp to check expiration more precisely.
 		$token_data = array(
-			'token'      => $token,
-			'expires_at' => time() + ( 23 * HOUR_IN_SECONDS ),
+			'access_token' => $access_token,
+			'expires_in'   => 23 * HOUR_IN_SECONDS,
+			'timestamp'    => time(),
 		);
-
-		set_transient( 'wc_dhl_api_token', $token_data, 24 * HOUR_IN_SECONDS );
-
-		return $token;
+		
+		$transient_key = 'wc_dhl_access_token_' . md5( $api_user );
+		set_transient( $transient_key, $token_data, $token_data['expires_in'] );
+		
+		$this->logger->info( 'DHL API authentication successful.' );
+		
+		return $access_token;
 	}
 }

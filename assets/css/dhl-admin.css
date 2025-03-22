@@ -1,4 +1,84 @@
 /**
+ * DHL Shipping Admin Styles
+ */
+
+.wc-dhl-shipping-method {
+    padding: 15px;
+    border: 1px solid #ddd;
+    margin-bottom: 15px;
+    background: #f8f8f8;
+}
+
+.wc-dhl-shipping-method h3 {
+    margin-top: 0;
+}
+
+.wc-dhl-service-settings {
+    margin-bottom: 20px;
+}
+
+.wc-dhl-service-settings table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wc-dhl-service-settings th {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+.wc-dhl-service-settings td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.wc-dhl-boxes {
+    margin-bottom: 20px;
+}
+
+.wc-dhl-boxes table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wc-dhl-boxes th {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+.wc-dhl-boxes td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.wc-dhl-add-box {
+    margin-top: 10px;
+}
+
+.wc-dhl-add-box a {
+    text-decoration: none;
+}
+
+/* DHL branding colors */
+.dhl-primary {
+    color: #ffcc00;
+}
+
+.dhl-secondary {
+    color: #d40511;
+}
+
+.dhl-bg-primary {
+    background-color: #ffcc00;
+}
+
+.dhl-bg-secondary {
+    background-color: #d40511;
+}
+
+/**
  * DHL Admin Styles
  */
 .wc-shipping-zone-method-dhl .wc-shipping-zone-method-title {

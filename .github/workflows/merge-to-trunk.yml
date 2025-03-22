@@ -1,0 +1,50 @@
+name: Merge to trunk
+
+on:
+  push:
+    branches:
+      - trunk
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run tests
+    uses: ./.github/workflows/ci.yml
+
+  merge:
+    name: Merge to trunk
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git user
+        run: |
+          git config --global user.email "woocommerce+github-bot@automattic.com"
+          git config --global user.name "WooCommerce Bot"
+
+      - name: Check if there are changes to merge
+        id: check_changes
+        run: |
+          git fetch origin trunk
+          DIFF=$(git diff origin/trunk..HEAD)
+          if [ -n "$DIFF" ]; then
+            echo "::set-output name=has_changes::true"
+          else
+            echo "::set-output name=has_changes::false"
+          fi
+
+      - name: Merge develop to trunk
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git checkout trunk
+          git merge --no-ff develop -m "Merge develop to trunk"
+          git push origin trunk 

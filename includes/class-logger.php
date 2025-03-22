@@ -21,69 +21,62 @@ class Logger {
 	 *
 	 * @var \WC_Logger
 	 */
-	private static $logger;
+	private $wc_logger;
 
 	/**
-	 * Log an error message.
-	 *
-	 * @param string $message The message to be logged.
-	 * @param array  $context Optional. Additional information for log handlers.
+	 * Constructor.
 	 */
-	public static function error( $message, $context = array() ) {
-		self::log( 'error', $message, $context );
+	public function __construct() {
+		$this->wc_logger = wc_get_logger();
 	}
 
 	/**
-	 * Log a warning message.
+	 * Log a message.
 	 *
-	 * @param string $message The message to be logged.
-	 * @param array  $context Optional. Additional information for log handlers.
+	 * @param string $message Message to log.
+	 * @param string $level   Log level.
 	 */
-	public static function warning( $message, $context = array() ) {
-		self::log( 'warning', $message, $context );
+	private function log( $message, $level ) {
+		if ( ! is_scalar( $message ) ) {
+			$message = print_r( $message, true );
+		}
+
+		$this->wc_logger->log( $level, $message, array( 'source' => 'woocommerce-shipping-dhl' ) );
 	}
 
 	/**
 	 * Log an info message.
 	 *
-	 * @param string $message The message to be logged.
-	 * @param array  $context Optional. Additional information for log handlers.
+	 * @param string $message Message to log.
 	 */
-	public static function info( $message, $context = array() ) {
-		self::log( 'info', $message, $context );
+	public function info( $message ) {
+		$this->log( $message, 'info' );
+	}
+
+	/**
+	 * Log a warning message.
+	 *
+	 * @param string $message Message to log.
+	 */
+	public function warning( $message ) {
+		$this->log( $message, 'warning' );
+	}
+
+	/**
+	 * Log an error message.
+	 *
+	 * @param string $message Message to log.
+	 */
+	public function error( $message ) {
+		$this->log( $message, 'error' );
 	}
 
 	/**
 	 * Log a debug message.
 	 *
-	 * @param string $message The message to be logged.
-	 * @param array  $context Optional. Additional information for log handlers.
+	 * @param string $message Message to log.
 	 */
-	public static function debug( $message, $context = array() ) {
-		self::log( 'debug', $message, $context );
-	}
-
-	/**
-	 * Log message with any level.
-	 *
-	 * @param string $level   Log level.
-	 * @param string $message The message to be logged.
-	 * @param array  $context Optional. Additional information for log handlers.
-	 */
-	public static function log( $level, $message, $context = array() ) {
-		if ( empty( self::$logger ) ) {
-			self::$logger = wc_get_logger();
-		}
-
-		if ( is_array( $message ) || is_object( $message ) ) {
-			$message = print_r( $message, true );
-		}
-
-		$context = array_merge(
-			$context,
-			array( 'source' => 'woocommerce-shipping-dhl' )
-		);
-
-		self::$logger->log( $level, $message, $context );
+	public function debug( $message ) {
+		$this->log( $message, 'debug' );
 	}
 }

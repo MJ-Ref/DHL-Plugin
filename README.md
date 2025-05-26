@@ -1,4 +1,5 @@
-# WooCommerce DHL Shipping
+# DHL Shipping Live Rates
+
 
 This plugin integrates DHL Express shipping rates and services with your WooCommerce store.
 

@@ -1,92 +1,63 @@
-# DHL Shipping Live Rates
+# DHL Shipping Live Rates for WooCommerce
 
-
-This plugin integrates DHL Express shipping rates and services with your WooCommerce store.
+This plugin integrates DHL Express shipping rates and shipment operations with your WooCommerce store.
 
 ## Features
 
-- Real-time DHL Express shipping rates
-- Box packing and weight-based shipping options
-- Multiple DHL Express services support
-- Address validation
-- Configurable price adjustments
-- Custom box definitions
-- Fallback rates
-- Admin order actions for shipment creation, pickup booking, and tracking refresh
-
-## Installation
-
-### Automatic Installation
-1. Log in to your WordPress dashboard
-2. Navigate to Plugins → Add New
-3. Search for "WooCommerce DHL Shipping"
-4. Click "Install Now" and then "Activate"
-
-### Manual Installation
-1. Download the plugin zip file
-2. Log in to your WordPress dashboard
-3. Navigate to Plugins → Add New
-4. Click "Upload Plugin"
-5. Upload the zip file
-6. Activate the plugin
-
-### Post-Installation
-1. After installation, run the following commands in the plugin directory to install dependencies:
-   ```
-   composer install
-   ```
-2. Navigate to WooCommerce → Settings → Shipping → Shipping Zones
-3. Add DHL as a shipping method to your desired shipping zones
-4. Configure the DHL settings with your API credentials and shipping preferences
-
-### Dependencies
-This plugin requires the following dependencies:
-- PHP 7.4 or higher
-- WooCommerce 9.5 or higher
-- WordPress 6.6 or higher
-- WooCommerce BoxPacker library (installed automatically via Composer)
-
-## Configuration
-
-### API Settings
-
-You will need DHL Express API credentials to use this plugin:
-
-1. Contact DHL to obtain your MyDHL API credentials (API User and API Key)
-2. Enter your API credentials in the plugin settings
-3. Configure your shipper account number
-
-### Origin Settings
-
-Set your shipping origin details:
-
-- Address
-- City
-- State
-- Country
-- Postcode
-
-### Packaging Settings
-
-Configure how your products will be packed:
-
-- Per item (each item shipped individually)
-- Box packing (items packed into defined boxes)
-- Weight-based (calculate shipping based on total order weight)
-
-### Service Settings
-
-Select and customize the DHL services you want to offer:
-
-- Enable/disable specific services
-- Set custom names for services
-- Apply percentage or fixed amount price adjustments
+- Real-time DHL Express shipping rates at checkout
+- Per-item, box-packing, and weight-based packing modes
+- DHL service selection with custom names and price adjustments
+- Destination address validation
+- Fallback rates when no live rates are returned
+- Admin order actions to:
+  - Create shipment + label
+  - Book pickup
+  - Refresh tracking
+  - Fetch proof of delivery (optional)
+  - Refresh service points (optional)
+  - Estimate landed cost (optional)
+- Scheduled tracking sync via WP-Cron (optional)
+- Optional customer-visible order notes for tracking changes
 
 ## Requirements
 
 - WordPress 6.6+
 - WooCommerce 9.5+
 - PHP 7.4+
+- DHL MyDHL API credentials (API user/key) and shipper number
+
+## Installation (Store Owners)
+
+1. In WordPress admin, go to **Plugins → Add New → Upload Plugin**.
+2. Upload the plugin ZIP and activate it.
+3. Go to **WooCommerce → Settings → Shipping → Shipping Zones**.
+4. Add **DHL** as a shipping method to your target zones.
+5. Open DHL method settings and configure:
+   - Environment (`test` or `production`)
+   - API User / API Key
+   - Shipper Number
+   - Origin address and packaging settings
+6. (Optional) Enable advanced operations:
+   - Service Points
+   - Landed Cost
+   - Tracking Sync
+   - Tracking Notifications
+
+## Installation (Developers / Source Checkout)
+
+Use this path only when running from source.
+
+```bash
+composer install
+npm ci
+```
+
+## Configuration Notes
+
+- Keep **Environment** on `test` until end-to-end shipment flows are validated.
+- Ensure product weights and dimensions are populated for better rate and shipment quality.
+- For landed-cost estimates, maintain commodity data where applicable.
+- Tracking sync uses WP-Cron and is disabled by default.
 
 ## Development
 
@@ -100,24 +71,32 @@ npm ci
 Bootstrap WordPress test libraries locally (requires MySQL):
 
 ```bash
-bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest
+bash bin/install-wp-tests.sh <db-name> <db-user> <db-pass> [db-host] [wp-version] [skip-database-creation]
+```
+
+Example (local MySQL root with empty password):
+
+```bash
+bash bin/install-wp-tests.sh dhl_plugin_tests root '' 127.0.0.1 latest true
 ```
 
 Run checks:
 
 ```bash
 composer run-script test
+composer run-script phpcs
+vendor/bin/phpcs . --standard=.phpcs.security.xml --ignore=vendor,node_modules
 npm run lint:js
 npm run lint:css
-vendor/bin/phpcs --standard=.phpcs.security.xml
 ```
 
 ## Support
 
 For plugin support and inquiries:
-- Visit our [Help Center](https://woocommerce.com/my-account/create-a-ticket/)
-- Email us at [help@woocommerce.com](mailto:help@woocommerce.com)
-- Visit our [documentation](https://docs.woocommerce.com/document/woocommerce-shipping-and-tax/)
+
+- Visit the [Help Center](https://woocommerce.com/my-account/create-a-ticket/)
+- Email [help@woocommerce.com](mailto:help@woocommerce.com)
+- Review [WooCommerce docs](https://docs.woocommerce.com/document/woocommerce-shipping-and-tax/)
 
 ## License
 

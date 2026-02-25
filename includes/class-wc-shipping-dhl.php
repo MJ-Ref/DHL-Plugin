@@ -266,6 +266,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$this->supports           = array(
 			'shipping-zones',
 			'instance-settings',
+			'instance-settings-modal',
 			'settings',
 		);
 		$this->logger             = new Logger();
@@ -336,7 +337,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return void
 	 */
 	public function init_form_fields() {
-		$this->instance_form_fields = array(
+		$fields = array(
 			'title'                           => array(
 				'title'       => __( 'Method Title', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
@@ -563,6 +564,9 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'desc_tip'    => true,
 			),
 		);
+
+		$this->instance_form_fields = $fields;
+		$this->form_fields          = $fields;
 	}
 
 	/**

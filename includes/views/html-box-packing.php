@@ -100,7 +100,3 @@ $boxes = $this->get_option( 'boxes', array() );
 		</div>
 	</td>
 </tr>
-</table>
-<h3><?php esc_html_e( 'Packing Settings', 'woocommerce-shipping-dhl' ); ?></h3>
-<p><?php esc_html_e( 'These are the packing options for the box packing method. These settings determine how items will be packed into boxes.', 'woocommerce-shipping-dhl' ); ?></p>
-<table class="form-table"><?php

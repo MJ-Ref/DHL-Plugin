@@ -43,7 +43,3 @@ $enabled_services = $this->get_enabled_service_codes();
 		</div>
 	</td>
 </tr>
-</table>
-<h3><?php esc_html_e( 'Service Options', 'woocommerce-shipping-dhl' ); ?></h3>
-<p><?php esc_html_e( 'Select the shipping services that will be available to customers.', 'woocommerce-shipping-dhl' ); ?></p>
-<table class="form-table"><?php

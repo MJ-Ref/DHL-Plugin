@@ -16,8 +16,27 @@ if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 	exit( 1 );
 }
 
+if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
+	$phpunit_polyfills_path = dirname( dirname( dirname( __FILE__ ) ) ) . '/vendor/yoast/phpunit-polyfills';
+	if ( file_exists( $phpunit_polyfills_path . '/phpunitpolyfills-autoload.php' ) ) {
+		define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', $phpunit_polyfills_path );
+	}
+}
+
 // Give access to tests_add_filter() function.
 require_once $_tests_dir . '/includes/functions.php';
+
+/**
+ * Manually load WooCommerce before the plugin being tested.
+ */
+function _manually_load_woocommerce() {
+	$wc_path = WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
+
+	if ( file_exists( $wc_path ) ) {
+		require_once $wc_path;
+	}
+}
+tests_add_filter( 'muplugins_loaded', '_manually_load_woocommerce' );
 
 /**
  * Manually load the plugin being tested.
@@ -29,13 +48,3 @@ tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
 
 // Start up the WP testing environment.
 require $_tests_dir . '/includes/bootstrap.php';
-
-// Load WooCommerce.
-function _load_wc_helper() {
-	// Load WooCommerce if available.
-	$wc_path = WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
-	if ( file_exists( $wc_path ) ) {
-		require_once $wc_path;
-	}
-}
-_load_wc_helper();

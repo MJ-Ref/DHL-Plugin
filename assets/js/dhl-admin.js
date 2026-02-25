@@ -77,20 +77,21 @@ jQuery( function( $ ) {
 	// Initialize
 	showHideBoxPackingOptions();
 
-	// Handle the OAuth process
+	// Validate API credentials from settings.
 	$('#wc-shipping-dhl-oauth-button').on('click', function(e) {
 		e.preventDefault();
 		
 		var data = {
-			action: 'wc_shipping_dhl_oauth',
+			action: 'wc_shipping_dhl_validate_credentials',
 			api_user: $('#woocommerce_dhl_api_user').val(),
 			api_key: $('#woocommerce_dhl_api_key').val(),
+			shipper_number: $('#woocommerce_dhl_shipper_number').val(),
 			environment: $('#woocommerce_dhl_environment').val(),
-			security: $('#wc_shipping_dhl_oauth_nonce').val()
+			nonce: dhl_admin_params.nonce
 		};
-		
+	
 		$('#wc-shipping-dhl-oauth-status').html('<p>' + dhl_admin_params.i18n_connecting + '</p>');
-		
+	
 		$.post(dhl_admin_params.ajax_url, data, function(response) {
 			if (response.success) {
 				$('#wc-shipping-dhl-oauth-status').html('<p>' + response.data.message + '</p>').removeClass('error').addClass('success');

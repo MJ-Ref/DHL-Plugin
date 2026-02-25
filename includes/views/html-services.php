@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$services = $this->get_dhl_services();
+$services         = $this->get_dhl_services();
 $enabled_services = $this->get_enabled_service_codes();
 
 ?>

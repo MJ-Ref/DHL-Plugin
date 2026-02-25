@@ -35,4 +35,4 @@ class WC_DHL_Privacy extends \WC_Abstract_Privacy {
 	}
 }
 
-new WC_DHL_Privacy(); 
+new WC_DHL_Privacy();

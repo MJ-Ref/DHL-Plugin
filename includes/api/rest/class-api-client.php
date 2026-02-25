@@ -19,7 +19,7 @@ use WP_Error;
  * API_Client class.
  */
 class API_Client extends Abstract_API_Client {
-	
+
 	use Util;
 
 	/**
@@ -57,9 +57,9 @@ class API_Client extends Abstract_API_Client {
 	 */
 	private function get_request_headers( $additional_headers = array() ) {
 		$headers = array(
-			'Content-Type'  => 'application/json',
-			'Accept'        => 'application/json',
-			'x-version'     => self::$api_version,
+			'Content-Type' => 'application/json',
+			'Accept'       => 'application/json',
+			'x-version'    => self::$api_version,
 		);
 
 		return array_merge( $headers, $additional_headers );
@@ -78,7 +78,7 @@ class API_Client extends Abstract_API_Client {
 		}
 
 		// Get the OAuth token.
-		$oauth      = new OAuth( $this->shipping_method );
+		$oauth        = new OAuth( $this->shipping_method );
 		$access_token = $oauth->get_access_token();
 
 		if ( is_wp_error( $access_token ) ) {
@@ -86,17 +86,21 @@ class API_Client extends Abstract_API_Client {
 		}
 
 		// Create the request headers.
-		$headers = $this->get_request_headers( array(
-			'Authorization' => 'Basic ' . $access_token,
-		) );
+		$headers = $this->get_request_headers(
+			array(
+				'Authorization' => 'Basic ' . $access_token,
+			)
+		);
 
-		/**
-		 * Filter the rate request.
-		 *
-		 * @param array $request The rate request.
-		 * @param \WC_Shipping_DHL $shipping_method The shipping method.
-		 */
-		$request = apply_filters( 'woocommerce_shipping_dhl_rate_request', $request, $this->shipping_method );
+			/**
+			 * Filter the rate request.
+			 *
+			 * @param array $request The rate request.
+			 * @param \WC_Shipping_DHL $shipping_method The shipping method.
+			 *
+			 * @since 1.0.0
+			 */
+			$request = apply_filters( 'woocommerce_shipping_dhl_rate_request', $request, $this->shipping_method );
 
 		// Log the API request if debug is enabled.
 		if ( $this->shipping_method->is_debug_mode_enabled() ) {
@@ -112,7 +116,7 @@ class API_Client extends Abstract_API_Client {
 			$this->get_api_url() . '/rates',
 			array(
 				'headers' => $headers,
-				'body'    => json_encode( $request ),
+				'body'    => wp_json_encode( $request ),
 				'timeout' => 30,
 			)
 		);
@@ -130,24 +134,24 @@ class API_Client extends Abstract_API_Client {
 
 		// Check the response code.
 		$status_code = wp_remote_retrieve_response_code( $response );
-		
+
 		if ( $status_code < 200 || $status_code >= 300 ) {
-			$error_body = wp_remote_retrieve_body( $response );
-			$error_data = json_decode( $error_body, true );
-			$error_message = isset( $error_data['error']['message'] ) 
-				? $error_data['error']['message'] 
+			$error_body    = wp_remote_retrieve_body( $response );
+			$error_data    = json_decode( $error_body, true );
+			$error_message = isset( $error_data['error']['message'] )
+				? $error_data['error']['message']
 				: sprintf( __( 'DHL API returned HTTP status %d', 'woocommerce-shipping-dhl' ), $status_code );
-			
+
 			$this->shipping_method->debug( $error_message, 'error', json_decode( $error_body, true ) );
-			
+
 			// Add user-facing notice for admin users.
 			if ( is_admin() && current_user_can( 'manage_woocommerce' ) ) {
 				Notifier::add_notice( $error_message, 'error' );
 			}
-			
+
 			return new WP_Error( 'dhl_api_error', $error_message );
 		}
-		
+
 		// Log the API response.
 		if ( $this->shipping_method->is_debug_mode_enabled() ) {
 			$this->shipping_method->debug(
@@ -156,7 +160,7 @@ class API_Client extends Abstract_API_Client {
 				json_decode( wp_remote_retrieve_body( $response ), true )
 			);
 		}
-		
+
 		return $response;
 	}
 
@@ -251,9 +255,9 @@ class API_Client extends Abstract_API_Client {
 	 */
 	private function add_package_dimensions_element( array &$request, $length, $width, $height ) {
 		$request['dimensions'] = array(
-			'length' => (string) round( $length ),
-			'width'  => (string) round( $width ),
-			'height' => (string) round( $height ),
+			'length'            => (string) round( $length ),
+			'width'             => (string) round( $width ),
+			'height'            => (string) round( $height ),
 			'unitOfMeasurement' => $this->shipping_method->get_dimension_unit(),
 		);
 	}
@@ -268,7 +272,7 @@ class API_Client extends Abstract_API_Client {
 	 */
 	private function add_package_weight_element( array &$request, $weight ) {
 		$request['weight'] = array(
-			'value' => (string) $weight,
+			'value'             => (string) $weight,
 			'unitOfMeasurement' => $this->shipping_method->get_weight_unit(),
 		);
 	}
@@ -300,8 +304,8 @@ class API_Client extends Abstract_API_Client {
 	 */
 	private function build_rate_request( array $package_requests, string $service_code = '' ): array {
 		$request = array(
-			'customerDetails' => array(
-				'shipperDetails' => array(
+			'customerDetails'              => array(
+				'shipperDetails'  => array(
 					'postalCode'  => $this->shipping_method->get_origin_postcode(),
 					'cityName'    => $this->shipping_method->get_origin_city(),
 					'countryCode' => $this->shipping_method->get_origin_country(),
@@ -312,16 +316,17 @@ class API_Client extends Abstract_API_Client {
 					'countryCode' => $this->package['destination']['country'],
 				),
 			),
-			'accounts' => array(
+			'accounts'                     => array(
 				array(
-					'typeCode'   => 'shipper',
-					'number'     => $this->shipping_method->get_shipper_number(),
+					'typeCode' => 'shipper',
+					'number'   => $this->shipping_method->get_shipper_number(),
 				),
 			),
-			'plannedShippingDateAndTime' => date( 'Y-m-d\TH:i:s \G\M\TP', strtotime( '+1 day' ) ),
-			'unitOfMeasurement'          => $this->shipping_method->get_weight_unit() === 'KG' ? 'metric' : 'imperial',
-			'isCustomsDeclarable'        => false,
-			'monetaryAmount'             => array(
+			// Keep this deterministic for a day so request caching can work reliably.
+			'plannedShippingDateAndTime'   => gmdate( 'Y-m-d', strtotime( '+1 day' ) ) . 'T12:00:00 GMT+00:00',
+			'unitOfMeasurement'            => $this->shipping_method->get_weight_unit() === 'KG' ? 'metric' : 'imperial',
+			'isCustomsDeclarable'          => false,
+			'monetaryAmount'               => array(
 				array(
 					'typeCode'     => 'declaredValue',
 					'value'        => 0,
@@ -383,11 +388,11 @@ class API_Client extends Abstract_API_Client {
 			return array();
 		}
 
-		$rates = array();
+		$rates   = array();
 		$request = $this->build_rate_request( $this->package_requests );
-		
+
 		// Try to get a cached response before sending a new request.
-		$transient = 'dhl_quote_' . md5( wp_json_encode( $request ) );
+		$transient       = 'dhl_quote_' . md5( wp_json_encode( $request ) );
 		$cached_response = get_transient( $transient );
 
 		if ( false === $cached_response ) {
@@ -398,8 +403,10 @@ class API_Client extends Abstract_API_Client {
 				return array();
 			}
 
-			set_transient( $transient, $response['body'], DAY_IN_SECONDS * 30 );
-			$response_body = $response['body'];
+			$response_body = wp_remote_retrieve_body( $response );
+
+			// Quotes are time-sensitive, so keep cache relatively short.
+			set_transient( $transient, $response_body, HOUR_IN_SECONDS );
 		} else {
 			$response_body = $cached_response;
 		}
@@ -420,6 +427,11 @@ class API_Client extends Abstract_API_Client {
 		// Parse the response.
 		$response_data = json_decode( $response_body );
 
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_object( $response_data ) ) {
+			$this->shipping_method->debug( __( 'Invalid DHL response received.', 'woocommerce-shipping-dhl' ), 'error' );
+			return array();
+		}
+
 		// Check if we have products in the response.
 		if ( empty( $response_data->products ) ) {
 			return array();
@@ -428,7 +440,15 @@ class API_Client extends Abstract_API_Client {
 		$dhl_services = $response_data->products;
 
 		foreach ( $dhl_services as $service ) {
-			$code = $service->productCode;
+			$service_data = json_decode( wp_json_encode( $service ), true );
+			if ( ! is_array( $service_data ) ) {
+				continue;
+			}
+
+			$code = isset( $service_data['productCode'] ) ? (string) $service_data['productCode'] : '';
+			if ( '' === $code ) {
+				continue;
+			}
 
 			// Check if the service is enabled.
 			$enabled_service_codes = $this->shipping_method->get_enabled_service_codes();
@@ -436,11 +456,23 @@ class API_Client extends Abstract_API_Client {
 				continue;
 			}
 
-			$rate_id = $this->shipping_method->get_rate_id( $code );
-			$currency = $service->totalPrice[0]->priceCurrency ?? get_woocommerce_currency();
+			$rate_id       = $this->shipping_method->get_rate_id( $code );
+			$total_prices  = ( isset( $service_data['totalPrice'] ) && is_array( $service_data['totalPrice'] ) ) ? $service_data['totalPrice'] : array();
+			$first_price   = ( isset( $total_prices[0] ) && is_array( $total_prices[0] ) ) ? $total_prices[0] : array();
+			$rate_currency = isset( $first_price['priceCurrency'] ) ? (string) $first_price['priceCurrency'] : '';
+			$currency      = '' !== $rate_currency ? $rate_currency : get_woocommerce_currency();
 
 			// Get the rate name.
 			$rate_name = $this->get_rate_name( $code );
+			if ( '' === $rate_name ) {
+				if ( ! empty( $service_data['localProductName'] ) && is_string( $service_data['localProductName'] ) ) {
+					$rate_name = $service_data['localProductName'];
+				} elseif ( ! empty( $service_data['productName'] ) && is_string( $service_data['productName'] ) ) {
+					$rate_name = $service_data['productName'];
+				} else {
+					$rate_name = (string) $code;
+				}
+			}
 
 			// Ensure the store currency matches the rate currency.
 			if ( ! $this->is_store_currency_equal_to_rate_currency( $response_data, $rate_name, $currency ) ) {
@@ -470,7 +502,12 @@ class API_Client extends Abstract_API_Client {
 					'label'     => $rate_name,
 					'cost'      => $rate_cost,
 					'sort'      => $sort,
-					'meta_data' => $this->maybe_get_packed_box_details(),
+					'meta_data' => array_merge(
+						array(
+							'service_code' => $code,
+						),
+						(array) $this->maybe_get_packed_box_details()
+					),
 				),
 				$currency,
 				$service,
@@ -490,12 +527,14 @@ class API_Client extends Abstract_API_Client {
 	 * @return float
 	 */
 	public function get_rate_cost( object $service, string $code ): float {
-		$rate_cost = 0;
+		$rate_cost    = 0;
+		$service_data = json_decode( wp_json_encode( $service ), true );
+		$total_prices = ( isset( $service_data['totalPrice'] ) && is_array( $service_data['totalPrice'] ) ) ? $service_data['totalPrice'] : array();
 
-		if ( ! empty( $service->totalPrice ) && is_array( $service->totalPrice ) ) {
-			foreach ( $service->totalPrice as $price ) {
-				if ( isset( $price->price ) ) {
-					$rate_cost += (float) $price->price;
+		if ( ! empty( $total_prices ) ) {
+			foreach ( $total_prices as $price ) {
+				if ( is_array( $price ) && isset( $price['price'] ) ) {
+					$rate_cost += (float) $price['price'];
 				}
 			}
 		}
@@ -521,7 +560,7 @@ class API_Client extends Abstract_API_Client {
 		$meta_data = array();
 		foreach ( $this->package_requests as $index => $request ) {
 			$request_object = json_decode( wp_json_encode( $request ), false );
-			$meta_data = $this->maybe_get_packed_box_details_meta( $meta_data, $request_object, ( $index + 1 ) );
+			$meta_data      = $this->maybe_get_packed_box_details_meta( $meta_data, $request_object, ( $index + 1 ) );
 		}
 
 		return ! empty( $meta_data ) ? $meta_data : false;
@@ -535,30 +574,33 @@ class API_Client extends Abstract_API_Client {
 	 */
 	public function calculate_shipping( $package ) {
 		$this->set_package( $package );
-		
+
 		// Prepare package requests based on packing method.
 		$requests = $this->shipping_method->prepare_package_requests( $package );
-		
+
 		if ( empty( $requests ) ) {
 			$this->shipping_method->debug( __( 'No packages to ship.', 'woocommerce-shipping-dhl' ), 'error' );
 			return;
 		}
-		
+
 		$this->set_package_requests( $requests );
-		
+
 		// Get the shipping rates.
 		$rates = $this->get_rates();
-		
+
 		if ( empty( $rates ) ) {
 			$this->shipping_method->debug( __( 'No shipping rates returned from DHL.', 'woocommerce-shipping-dhl' ), 'error' );
 
 			// Use fallback rate if available.
-			if ( ! empty( $this->shipping_method->fallback ) ) {
-				$this->shipping_method->add_rate( array(
-					'id'    => $this->shipping_method->get_rate_id( 'fallback' ),
-					'label' => $this->shipping_method->title,
-					'cost'  => $this->shipping_method->fallback,
-				) );
+			$fallback_rate = $this->shipping_method->get_option( 'fallback', '' );
+			if ( '' !== (string) $fallback_rate ) {
+				$this->shipping_method->add_rate(
+					array(
+						'id'    => $this->shipping_method->get_rate_id( 'fallback' ),
+						'label' => $this->shipping_method->get_option( 'title', __( 'DHL Express', 'woocommerce-shipping-dhl' ) ),
+						'cost'  => (float) wc_format_decimal( $fallback_rate ),
+					)
+				);
 			}
 			return;
 		}
@@ -574,7 +616,7 @@ class API_Client extends Abstract_API_Client {
 	 */
 	public function validate_credentials() {
 		// Get the OAuth token.
-		$oauth = new OAuth( $this->shipping_method );
+		$oauth        = new OAuth( $this->shipping_method );
 		$access_token = $oauth->get_access_token();
 
 		if ( is_wp_error( $access_token ) ) {
@@ -582,19 +624,23 @@ class API_Client extends Abstract_API_Client {
 		}
 
 		// Create the request headers.
-		$headers = $this->get_request_headers( array(
-			'Authorization' => 'Basic ' . $access_token,
-		) );
+		$headers = $this->get_request_headers(
+			array(
+				'Authorization' => 'Basic ' . $access_token,
+			)
+		);
 
 		// Create a simple test request to validate credentials.
 		// Using address validation as it's a lightweight API call.
 		$test_request = array(
+			'postalCode'  => '10001',
+			'cityName'    => 'New York',
 			'countryCode' => 'US',
 		);
 
 		// Make the API request.
 		$response = wp_remote_get(
-			$this->get_api_url() . '/address-validate?' . http_build_query( $test_request ),
+			add_query_arg( $test_request, $this->get_api_url() . '/address-validate' ),
 			array(
 				'headers' => $headers,
 				'timeout' => 30,
@@ -613,9 +659,13 @@ class API_Client extends Abstract_API_Client {
 
 		// Check the response code.
 		$status_code = wp_remote_retrieve_response_code( $response );
-		
-		// 200-299 range indicates successful request.
-		return $status_code >= 200 && $status_code < 300;
+
+		// Credential issues are returned as 401/403. Other 4xx codes can still indicate valid credentials.
+		if ( in_array( $status_code, array( 401, 403 ), true ) ) {
+			return false;
+		}
+
+		return $status_code >= 200 && $status_code < 500;
 	}
 
 	/**
@@ -624,19 +674,27 @@ class API_Client extends Abstract_API_Client {
 	 * @param array $destination_address The destination address.
 	 * @return void
 	 */
-	public function validate_destination_address( array $destination_address ) {
+	public function validate_destination_address( $destination_address ) {
 		$access_token = $this->shipping_method->get_dhl_oauth()->get_access_token();
 
 		// If we don't have an access token, return an error.
-		if ( ! $access_token ) {
+		if ( is_wp_error( $access_token ) || empty( $access_token ) ) {
 			$this->shipping_method->debug( __( 'DHL authentication failed.', 'woocommerce-shipping-dhl' ), 'error' );
+			// Do not block checkout when API auth is unavailable.
+			$this->shipping_method->set_is_valid_destination_address( true );
 			return;
 		}
 
 		$this->shipping_method->set_is_valid_destination_address( false );
 
 		// Validate the address.
-		$this->set_address_validator( new Address_Validator( $destination_address, $access_token ) );
+		$this->set_address_validator(
+			new Address_Validator(
+				$destination_address,
+				$access_token,
+				$this->shipping_method->get_option( 'environment', 'test' )
+			)
+		);
 		$this->get_address_validator()->validate();
 
 		$notice_group = $this->get_address_validator()::$notice_group;
@@ -679,15 +737,15 @@ class API_Client extends Abstract_API_Client {
 		if ( 429 === $response_code ) {
 			// Store a transient to block requests for 5 minutes.
 			set_transient( 'wc_dhl_rate_limited', true, 5 * MINUTE_IN_SECONDS );
-			
+
 			$error_message = __( 'DHL API rate limit exceeded. Please try again later.', 'woocommerce-shipping-dhl' );
 			$this->shipping_method->debug( $error_message, 'error' );
-			
+
 			// Add user-facing notice for admin users.
 			if ( is_admin() && current_user_can( 'manage_woocommerce' ) ) {
 				Notifier::add_notice( $error_message, 'error', 'rate_limit' );
 			}
-			
+
 			return true;
 		}
 

@@ -43,12 +43,23 @@ function wc_dhl_activation_check() {
 		deactivate_plugins( basename( __FILE__ ) );
 		wp_die( "Sorry, but you can't run this plugin, it requires the SimpleXML library installed on your server/hosting to function." );
 	}
-	
+
 	// Set redirect flag.
 	set_transient( 'wc_shipping_dhl_activation_redirect', true, 30 );
 }
 
 register_activation_hook( __FILE__, 'wc_dhl_activation_check' );
+
+/**
+ * Plugin deactivation cleanup.
+ *
+ * @return void
+ */
+function wc_dhl_deactivation_cleanup() {
+	wp_clear_scheduled_hook( 'wc_dhl_tracking_sync_event' );
+}
+
+register_deactivation_hook( __FILE__, 'wc_dhl_deactivation_cleanup' );
 
 add_action( 'plugins_loaded', 'wc_shipping_dhl_init' );
 
@@ -63,14 +74,14 @@ function wc_shipping_dhl_init() {
 	if ( file_exists( __DIR__ . '/vendor/autoload_packages.php' ) ) {
 		require_once __DIR__ . '/vendor/autoload_packages.php';
 	}
-	
+
 	if ( ! class_exists( 'WooCommerce' ) ) {
-		wc_shipping_dhl_show_woocommerce_deactivated_notice();
+		add_action( 'admin_notices', 'wc_shipping_dhl_show_woocommerce_deactivated_notice' );
 		return;
 	}
-	
+
 	require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl-init.php';
-	
+
 	\WooCommerce\DHL\WC_Shipping_DHL_Init::get_instance();
 }
 
@@ -78,13 +89,19 @@ function wc_shipping_dhl_init() {
  * Show WooCommerce Deactivated Notice.
  */
 function wc_shipping_dhl_show_woocommerce_deactivated_notice() {
+	if ( ! is_admin() ) {
+		return;
+	}
+
 	/* translators: %s: WooCommerce link */
-	echo '<div class="error"><p>' . 
+	echo '<div class="notice notice-error"><p>';
+	echo wp_kses_post(
 		sprintf(
 			// translators: %1$s: WooCommerce link, %2$s: Add plugins link.
-			esc_html__( 'WooCommerce DHL Shipping requires %1$s to be installed and active. Install and activate it %2$s.', 'woocommerce-shipping-dhl' ),
-			'<a href="https://woocommerce.com/" target="_blank">WooCommerce</a>',
-			'<a href="' . esc_url( admin_url( '/plugin-install.php?s=woocommerce&tab=search&type=term' ) ) . '" target="_blank">here</a>'
+			__( 'WooCommerce DHL Shipping requires %1$s to be installed and active. Install and activate it %2$s.', 'woocommerce-shipping-dhl' ),
+			'<a href="https://woocommerce.com/" target="_blank" rel="noopener noreferrer">WooCommerce</a>',
+			'<a href="' . esc_url( admin_url( '/plugin-install.php?s=woocommerce&tab=search&type=term' ) ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'here', 'woocommerce-shipping-dhl' ) . '</a>'
 		)
-		. '</p></div>';
+	);
+	echo '</p></div>';
 }

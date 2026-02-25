@@ -12,6 +12,7 @@ This plugin integrates DHL Express shipping rates and services with your WooComm
 - Configurable price adjustments
 - Custom box definitions
 - Fallback rates
+- Admin order actions for shipment creation, pickup booking, and tracking refresh
 
 ## Installation
 
@@ -86,6 +87,30 @@ Select and customize the DHL services you want to offer:
 - WordPress 6.6+
 - WooCommerce 9.5+
 - PHP 7.4+
+
+## Development
+
+Install dependencies:
+
+```bash
+composer install
+npm ci
+```
+
+Bootstrap WordPress test libraries locally (requires MySQL):
+
+```bash
+bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest
+```
+
+Run checks:
+
+```bash
+composer run-script test
+npm run lint:js
+npm run lint:css
+vendor/bin/phpcs --standard=.phpcs.security.xml
+```
 
 ## Support
 

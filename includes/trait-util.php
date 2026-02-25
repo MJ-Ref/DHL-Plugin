@@ -68,7 +68,7 @@ trait Util {
 	 */
 	public function is_domestic( $destination_country ) {
 		$origin_country = isset( $this->origin_country ) ? $this->origin_country : '';
-		
+
 		if ( empty( $origin_country ) ) {
 			$origin_country = WC()->countries->get_base_country();
 		}
@@ -108,6 +108,13 @@ trait Util {
 	 * @return array
 	 */
 	public function get_supported_countries() {
+		/**
+		 * Filters the list of country codes supported by DHL for rate lookups.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param string[] $supported_countries Supported country ISO codes.
+		 */
 		return apply_filters(
 			'woocommerce_dhl_supported_countries',
 			array_keys( WC()->countries->get_countries() )
@@ -131,7 +138,7 @@ trait Util {
 	 */
 	public function get_dhl_services_from_data() {
 		$services_file = WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/data/data-services.php';
-		
+
 		if ( file_exists( $services_file ) ) {
 			return include $services_file;
 		}

@@ -27,12 +27,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 				</thead>
 				<tbody>
-					<?php foreach ( $services as $code => $name ) : 
-						$enabled = isset( $custom_services[ $code ]['enabled'] ) ? 1 === $custom_services[ $code ]['enabled'] : false;
-						$custom_name = isset( $custom_services[ $code ]['name'] ) ? $custom_services[ $code ]['name'] : $name;
+					<?php
+					foreach ( $services as $code => $name ) :
+						$enabled            = isset( $custom_services[ $code ]['enabled'] ) ? 1 === $custom_services[ $code ]['enabled'] : false;
+						$custom_name        = isset( $custom_services[ $code ]['name'] ) ? $custom_services[ $code ]['name'] : $name;
 						$adjustment_percent = isset( $custom_services[ $code ]['adjustment_percent'] ) ? $custom_services[ $code ]['adjustment_percent'] : '';
-						$adjustment = isset( $custom_services[ $code ]['adjustment'] ) ? $custom_services[ $code ]['adjustment'] : '';
-					?>
+						$adjustment         = isset( $custom_services[ $code ]['adjustment'] ) ? $custom_services[ $code ]['adjustment'] : '';
+						?>
 						<tr>
 							<td>
 								<?php echo esc_html( $name ); ?>

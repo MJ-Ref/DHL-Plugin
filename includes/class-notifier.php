@@ -94,7 +94,7 @@ class Notifier {
 
 		foreach ( $all_notices as $group => $notices ) {
 			foreach ( $notices as $notice ) {
-				$type = isset( $notice['type'] ) ? $notice['type'] : 'info';
+				$type    = isset( $notice['type'] ) ? $notice['type'] : 'info';
 				$message = isset( $notice['message'] ) ? $notice['message'] : '';
 
 				if ( empty( $message ) ) {

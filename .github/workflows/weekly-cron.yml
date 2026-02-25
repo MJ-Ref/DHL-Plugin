@@ -1,74 +1,135 @@
-name: Weekly Cron Job
+name: QIT Weekly Test
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1' # Run at midnight on Monday
+    # Run at 02:00 on Tuesday.
+    - cron: '0 2 * * 2'
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  php-compat:
-    name: PHP Compatibility Check
-    runs-on: ubuntu-latest
+  build:
+    name: Build artifact (zip file)
+    uses: ./.github/workflows/build.yml
+    with:
+      plugin_name: woocommerce-shipping-dhl
+
+  qit_tests:
+    name: QIT Tests
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      NO_COLOR: 1
+      QIT_DISABLE_ONBOARDING: yes
+      PLUGIN_NAME: ${{ needs.build.outputs.plugin_name }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Download plugin zip
+        uses: actions/download-artifact@v4
         with:
-          php-version: '7.4'
-          tools: composer:v2, phpcs, phpcompat
-          coverage: none
+          name: ${{ needs.build.outputs.plugin_name }}
 
-      - name: Install dependencies
-        run: composer install --no-progress --no-interaction
-
-      - name: Run PHP Compatibility Check
-        run: phpcs --standard=PHPCompatibility --runtime-set testVersion 7.4- --extensions=php .
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          tools: composer:v2
-          coverage: none
-
-      - name: Install dependencies
-        run: composer install --no-progress --no-interaction
-
-      - name: Run PHPCS security scan
-        run: vendor/bin/phpcs --standard=.phpcs.security.xml
-
-  dependency-updates:
-    name: Check for Dependency Updates
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4'
-          tools: composer:v2
-          coverage: none
-
-      - name: Check for npm package updates
+      - name: Check QIT credentials
+        id: qit-credentials
         run: |
-          npm install -g npm-check-updates
-          ncu
+          if [ -n "${{ secrets.COMPOSER_AUTH }}" ] && [ -n "${{ secrets.PARTNER_USER }}" ] && [ -n "${{ secrets.PARTNER_SECRET }}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "QIT credentials are not configured, skipping QIT suite."
+          fi
 
-      - name: Check for composer package updates
-        run: |
-          composer outdated --direct 
+      - name: Install QIT via composer
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.COMPOSER_AUTH }}"}}'
+        run: composer require woocommerce/qit-cli
+
+      - name: Add Partner
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: ./vendor/bin/qit partner:add --user='${{ secrets.PARTNER_USER }}' --application_password='${{ secrets.PARTNER_SECRET }}'
+
+      - name: Create results dir
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: mkdir ${{ github.workspace }}/qit-results
+
+      - name: Run activation test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-activation-test
+        run: ./vendor/bin/qit run:activation ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --woo=nightly --wp=nightly --wait > ${{ github.workspace }}/qit-results/qit-activation-results.txt
+
+      - name: Echo activation results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-activation-results.txt
+
+      - name: Run security test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-security-test
+        run: ./vendor/bin/qit run:security ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --wait > ${{ github.workspace }}/qit-results/qit-security-results.txt
+
+      - name: Echo security results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-security-results.txt
+
+      - name: Run PHP Compatibility test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-phpcompatibility-test
+        run: ./vendor/bin/qit run:phpcompatibility ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --min_php_version=7.4 --max_php_version=8.4 --wait > ${{ github.workspace }}/qit-results/qit-phpcompatibility-results.txt
+
+      - name: Echo PHP Compatibility results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-phpcompatibility-results.txt
+
+      - name: Run validation test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-validation-test
+        run: ./vendor/bin/qit run:validation ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --php_version=8.2 --wait > ${{ github.workspace }}/qit-results/qit-validation-results.txt
+
+      - name: Echo validation results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-validation-results.txt
+
+      - name: Run PHPStan test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-phpstan-test
+        run: ./vendor/bin/qit run:phpstan ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --wordpress_version=rc --woocommerce_version=rc --phpstan_level=2 --wait > ${{ github.workspace }}/qit-results/qit-phpstan-results.txt
+
+      - name: Echo PHPStan results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-phpstan-results.txt
+
+      - name: Run Woo API test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-woo-api-test
+        run: ./vendor/bin/qit run:woo-api ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --wordpress_version=rc --woocommerce_version=rc --wait > ${{ github.workspace }}/qit-results/qit-woo-api-results.txt
+
+      - name: Echo Woo API results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-woo-api-results.txt
+
+      - name: Run Woo E2E test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-woo-e2e-test
+        run: ./vendor/bin/qit run:woo-e2e ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --wordpress_version=rc --woocommerce_version=rc --wait > ${{ github.workspace }}/qit-results/qit-woo-e2e-results.txt
+
+      - name: Echo Woo E2E results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-woo-e2e-results.txt
+
+      - name: Run malware test
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        id: run-malware-test
+        run: ./vendor/bin/qit run:malware ${{ env.PLUGIN_NAME }} --zip=${{ env.PLUGIN_NAME }}.zip --wait > ${{ github.workspace }}/qit-results/qit-malware-results.txt
+
+      - name: Echo malware results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        run: cat ${{ github.workspace }}/qit-results/qit-malware-results.txt
+
+      - name: Upload results
+        if: steps.qit-credentials.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qit-results
+          path: ${{ github.workspace }}/qit-results/

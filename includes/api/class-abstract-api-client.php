@@ -198,13 +198,21 @@ abstract class Abstract_API_Client {
 	 * @return string
 	 */
 	public function get_rate_name( $code ) {
-		$name = '';
+		$services = $this->shipping_method->get_dhl_services();
+		$name     = $services[ $code ] ?? (string) $code;
+
+		$rate_name = sprintf(
+			/* translators: %1$s: DHL service name, %2$s: Shipping method title */
+			__( '%1$s (%2$s)', 'woocommerce-shipping-dhl' ),
+			$name,
+			$this->shipping_method->get_option( 'title', __( 'DHL Express', 'woocommerce-shipping-dhl' ) )
+		);
 
 		if ( ! empty( $this->shipping_method->get_custom_services()[ $code ]['name'] ) ) {
-			$name = $this->shipping_method->get_custom_services()[ $code ]['name'];
+			$rate_name = $this->shipping_method->get_custom_services()[ $code ]['name'];
 		}
 
-		return $name;
+		return $rate_name;
 	}
 
 	/**

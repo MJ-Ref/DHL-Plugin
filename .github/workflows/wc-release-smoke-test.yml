@@ -17,6 +17,19 @@ jobs:
       matrix:
         php: ['7.4', '8.0', '8.1']
         wordpress: ['6.6', 'latest']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,12 +46,18 @@ jobs:
 
       - name: Setup WordPress test environment
         run: |
-          bash bin/install-wp-tests.sh wordpress_test root '' localhost ${{ matrix.wordpress }}
+          bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 ${{ matrix.wordpress }}
           
       - name: Install WooCommerce
         run: |
-          wp plugin install woocommerce --version=${{ github.event.inputs.wc_version }} --activate
-          wp plugin status
+          mkdir -p /tmp/wordpress/wp-content/plugins
+          if [ "${{ github.event.inputs.wc_version }}" = "latest" ]; then
+            WC_ARCHIVE_URL="https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
+          else
+            WC_ARCHIVE_URL="https://downloads.wordpress.org/plugin/woocommerce.${{ github.event.inputs.wc_version }}.zip"
+          fi
+          curl -sSL "$WC_ARCHIVE_URL" -o /tmp/woocommerce.zip
+          unzip -q -o /tmp/woocommerce.zip -d /tmp/wordpress/wp-content/plugins
 
       - name: Run PHPUnit tests
         run: composer run-script test

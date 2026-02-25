@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 return array(
 	// Standard DHL Express boxes with dimensions in cm.
-	'dhl_express_box_1' => array(
+	'dhl_express_box_1'    => array(
 		'name'       => __( 'DHL Express Box 1', 'woocommerce-shipping-dhl' ),
 		'length'     => 33.7,
 		'width'      => 32.2,
@@ -20,7 +20,7 @@ return array(
 		'max_weight' => 25,
 		'enabled'    => true,
 	),
-	'dhl_express_box_2' => array(
+	'dhl_express_box_2'    => array(
 		'name'       => __( 'DHL Express Box 2', 'woocommerce-shipping-dhl' ),
 		'length'     => 33.7,
 		'width'      => 32.2,
@@ -29,7 +29,7 @@ return array(
 		'max_weight' => 25,
 		'enabled'    => true,
 	),
-	'dhl_express_box_3' => array(
+	'dhl_express_box_3'    => array(
 		'name'       => __( 'DHL Express Box 3', 'woocommerce-shipping-dhl' ),
 		'length'     => 45.8,
 		'width'      => 41.7,
@@ -38,7 +38,7 @@ return array(
 		'max_weight' => 30,
 		'enabled'    => true,
 	),
-	'dhl_express_box_4' => array(
+	'dhl_express_box_4'    => array(
 		'name'       => __( 'DHL Express Box 4', 'woocommerce-shipping-dhl' ),
 		'length'     => 40.4,
 		'width'      => 32.4,
@@ -47,7 +47,7 @@ return array(
 		'max_weight' => 30,
 		'enabled'    => true,
 	),
-	'dhl_express_box_5' => array(
+	'dhl_express_box_5'    => array(
 		'name'       => __( 'DHL Express Box 5', 'woocommerce-shipping-dhl' ),
 		'length'     => 47.2,
 		'width'      => 32.4,
@@ -56,7 +56,7 @@ return array(
 		'max_weight' => 30,
 		'enabled'    => true,
 	),
-	'dhl_express_tube' => array(
+	'dhl_express_tube'     => array(
 		'name'       => __( 'DHL Express Tube', 'woocommerce-shipping-dhl' ),
 		'length'     => 96.5,
 		'width'      => 15.2,
@@ -75,7 +75,7 @@ return array(
 		'enabled'    => true,
 	),
 	// Generic box sizes.
-	'small_box' => array(
+	'small_box'            => array(
 		'name'       => __( 'Small Box', 'woocommerce-shipping-dhl' ),
 		'length'     => 20,
 		'width'      => 15,
@@ -84,7 +84,7 @@ return array(
 		'max_weight' => 10,
 		'enabled'    => true,
 	),
-	'medium_box' => array(
+	'medium_box'           => array(
 		'name'       => __( 'Medium Box', 'woocommerce-shipping-dhl' ),
 		'length'     => 30,
 		'width'      => 20,
@@ -93,7 +93,7 @@ return array(
 		'max_weight' => 20,
 		'enabled'    => true,
 	),
-	'large_box' => array(
+	'large_box'            => array(
 		'name'       => __( 'Large Box', 'woocommerce-shipping-dhl' ),
 		'length'     => 40,
 		'width'      => 30,
@@ -102,4 +102,4 @@ return array(
 		'max_weight' => 30,
 		'enabled'    => true,
 	),
-); 
+);

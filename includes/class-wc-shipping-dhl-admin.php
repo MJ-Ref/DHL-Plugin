@@ -53,8 +53,9 @@ class WC_Shipping_DHL_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Used only to scope assets on the settings screen.
 		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : '';
-		
+
 		if ( 'dhl' !== $section && 'dhl_settings' !== $section ) {
 			return;
 		}
@@ -63,14 +64,18 @@ class WC_Shipping_DHL_Admin {
 		wp_enqueue_script( 'wc-dhl-admin-script', WC_SHIPPING_DHL_PLUGIN_URL . '/assets/js/dhl-admin.js', array( 'jquery' ), WC_SHIPPING_DHL_VERSION, true );
 
 		// Add script data.
-		wp_localize_script( 'wc-dhl-admin-script', 'dhl_admin_params', array(
-			'ajax_url'       => admin_url( 'admin-ajax.php' ),
-			'nonce'          => wp_create_nonce( 'wc-shipping-dhl-admin' ),
-			'i18n_testing'   => __( 'Testing credentials...', 'woocommerce-shipping-dhl' ),
-			'i18n_success'   => __( 'Credentials validated successfully!', 'woocommerce-shipping-dhl' ),
-			'i18n_error'     => __( 'Credentials validation failed!', 'woocommerce-shipping-dhl' ),
-			'i18n_connecting' => __( 'Connecting to DHL...', 'woocommerce-shipping-dhl' ),
-		) );
+		wp_localize_script(
+			'wc-dhl-admin-script',
+			'dhl_admin_params',
+			array(
+				'ajax_url'        => admin_url( 'admin-ajax.php' ),
+				'nonce'           => wp_create_nonce( 'wc-shipping-dhl-admin' ),
+				'i18n_testing'    => __( 'Testing credentials...', 'woocommerce-shipping-dhl' ),
+				'i18n_success'    => __( 'Credentials validated successfully!', 'woocommerce-shipping-dhl' ),
+				'i18n_error'      => __( 'Credentials validation failed!', 'woocommerce-shipping-dhl' ),
+				'i18n_connecting' => __( 'Connecting to DHL...', 'woocommerce-shipping-dhl' ),
+			)
+		);
 	}
 
 	/**
@@ -87,10 +92,10 @@ class WC_Shipping_DHL_Admin {
 		// Redirect only once after plugin activation.
 		if ( get_transient( 'wc_shipping_dhl_activation_redirect' ) ) {
 			delete_transient( 'wc_shipping_dhl_activation_redirect' );
-			
-			// Only redirect if the WC_Shipping_DHL class exists.
-			if ( class_exists( 'WC_Shipping_DHL' ) ) {
-				wp_safe_redirect( admin_url( 'admin.php?page=wc-settings&tab=shipping&section=dhl_settings' ) );
+
+			// Only redirect if the shipping method class is loaded.
+			if ( class_exists( '\WooCommerce\DHL\WC_Shipping_DHL' ) ) {
+				wp_safe_redirect( admin_url( 'admin.php?page=wc-settings&tab=shipping&section=dhl' ) );
 				exit;
 			}
 		}
@@ -121,18 +126,18 @@ class WC_Shipping_DHL_Admin {
 		}
 
 		// Get the API credentials from the request.
-		$api_user = isset( $_POST['api_user'] ) ? sanitize_text_field( wp_unslash( $_POST['api_user'] ) ) : '';
-		$api_key = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
+		$api_user       = isset( $_POST['api_user'] ) ? sanitize_text_field( wp_unslash( $_POST['api_user'] ) ) : '';
+		$api_key        = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
 		$shipper_number = isset( $_POST['shipper_number'] ) ? sanitize_text_field( wp_unslash( $_POST['shipper_number'] ) ) : '';
-		$environment = isset( $_POST['environment'] ) ? sanitize_text_field( wp_unslash( $_POST['environment'] ) ) : 'test';
+		$environment    = isset( $_POST['environment'] ) ? sanitize_text_field( wp_unslash( $_POST['environment'] ) ) : 'test';
 
 		// Create a temporary shipping method instance.
 		$shipping_method = new WC_Shipping_DHL();
 		$shipping_method->init_settings();
-		$shipping_method->settings['api_user'] = $api_user;
-		$shipping_method->settings['api_key'] = $api_key;
+		$shipping_method->settings['api_user']       = $api_user;
+		$shipping_method->settings['api_key']        = $api_key;
 		$shipping_method->settings['shipper_number'] = $shipper_number;
-		$shipping_method->settings['environment'] = $environment;
+		$shipping_method->settings['environment']    = $environment;
 
 		// Create an API client.
 		$api_client = new API\REST\API_Client( $shipping_method );
@@ -146,4 +151,4 @@ class WC_Shipping_DHL_Admin {
 			wp_send_json_error( array( 'message' => __( 'Credentials validation failed!', 'woocommerce-shipping-dhl' ) ) );
 		}
 	}
-} 
+}

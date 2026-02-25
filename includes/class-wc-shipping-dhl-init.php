@@ -49,11 +49,13 @@ class WC_Shipping_DHL_Init {
 	 */
 	private function includes() {
 		// Core classes.
+		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/trait-util.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-logger.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-notifier.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-dhl-privacy.php';
-		
+		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-order-operations.php';
+
 		// Admin classes.
 		if ( is_admin() ) {
 			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl-admin.php';
@@ -61,24 +63,51 @@ class WC_Shipping_DHL_Init {
 			new WC_Shipping_DHL_Admin();
 			new Product_Editor();
 		}
-		
+
+		new Order_Operations();
+
 		// API classes.
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/class-abstract-api-client.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/class-abstract-address-validator.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/rest/class-api-client.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/rest/class-oauth.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/rest/class-address-validator.php';
+		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/api/rest/class-shipment-client.php';
 	}
 
 	/**
 	 * Set up hooks.
 	 */
 	private function hooks() {
+		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
+		add_action( 'before_woocommerce_init', array( $this, 'declare_product_editor_compatibility' ) );
 		add_action( 'woocommerce_shipping_init', array( $this, 'shipping_init' ) );
 		add_filter( 'woocommerce_shipping_methods', array( $this, 'add_shipping_method' ) );
 		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_integration' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'frontend_scripts' ) );
+	}
+
+	/**
+	 * Declare High-Performance Order Storage compatibility.
+	 *
+	 * @return void
+	 */
+	public function declare_hpos_compatibility() {
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', 'woocommerce-shipping-dhl/woocommerce-shipping-dhl.php' );
+		}
+	}
+
+	/**
+	 * Declare Product Editor compatibility.
+	 *
+	 * @return void
+	 */
+	public function declare_product_editor_compatibility() {
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'product_block_editor', 'woocommerce-shipping-dhl/woocommerce-shipping-dhl.php' );
+		}
 	}
 
 	/**
@@ -104,8 +133,8 @@ class WC_Shipping_DHL_Init {
 	 */
 	public function register_blocks_integration() {
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface' ) ) {
-			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-blocks-integration.php';
-			
+			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-dhl-blocks-integration.php';
+
 			add_action(
 				'woocommerce_blocks_checkout_block_registration',
 				function( $integration_registry ) {
@@ -119,7 +148,7 @@ class WC_Shipping_DHL_Init {
 	 * Load plugin textdomain.
 	 */
 	public function load_textdomain() {
-		load_plugin_textdomain( 'woocommerce-shipping-dhl', false, dirname( plugin_basename( WC_SHIPPING_DHL_PLUGIN_DIR ) ) . '/languages/' );
+		load_plugin_textdomain( 'woocommerce-shipping-dhl', false, dirname( plugin_basename( WC_SHIPPING_DHL_PLUGIN_DIR . '/woocommerce-shipping-dhl.php' ) ) . '/languages/' );
 	}
 
 	/**
@@ -133,8 +162,9 @@ class WC_Shipping_DHL_Init {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Used only to scope assets on the settings screen.
 		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : '';
-		
+
 		if ( 'dhl' !== $section ) {
 			return;
 		}

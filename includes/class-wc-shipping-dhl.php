@@ -35,14 +35,14 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @var mixed
 	 */
 	private $api_user;
-	
+
 	/**
 	 * DHL API key.
 	 *
 	 * @var mixed
 	 */
 	private $api_key;
-	
+
 	/**
 	 * DHL API shipper number.
 	 *
@@ -56,174 +56,202 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @var string
 	 */
 	private string $dim_unit;
-	
+
 	/**
 	 * The DHL instance weight unit.
 	 *
 	 * @var string
 	 */
 	private string $weight_unit;
-	
+
 	/**
 	 * Offer all rates or cheapest.
 	 *
 	 * @var mixed
 	 */
 	private $offer_rates;
-	
+
 	/**
 	 * Flag the destination address as residential.
 	 *
 	 * @var bool
 	 */
 	private bool $residential;
-	
+
 	/**
 	 * Is the destination address valid?
 	 *
 	 * @var bool
 	 */
 	private bool $is_valid_destination_address = true;
-	
+
 	/**
 	 * Is the destination address validation enabled?
 	 *
 	 * @var bool
 	 */
 	private bool $destination_address_validation;
-	
+
 	/**
 	 * The fallback cost to use if no rates are returned.
 	 *
 	 * @var mixed
 	 */
 	private $fallback;
-	
+
 	/**
 	 * Whether to pack items into boxes or not.
 	 *
 	 * @var mixed
 	 */
 	private $packing_method;
-	
+
 	/**
 	 * Sets the box packer library to use.
 	 *
 	 * @var string
 	 */
 	public $box_packer_library;
-	
+
 	/**
 	 * The custom boxes defined by the user.
 	 *
 	 * @var mixed
 	 */
 	private $boxes;
-	
+
 	/**
 	 * A flag to determine if the user wants to insure the package.
 	 *
 	 * @var bool
 	 */
 	private bool $insuredvalue;
-	
+
 	/**
 	 * Metric or imperial.
 	 *
 	 * @var string
 	 */
 	private string $units;
-	
+
 	/**
 	 * The origin address line.
 	 *
 	 * @var string
 	 */
 	private string $origin_addressline;
-	
+
 	/**
 	 * The origin city.
 	 *
 	 * @var string
 	 */
 	private string $origin_city;
-	
+
 	/**
 	 * The origin state.
 	 *
 	 * @var string
 	 */
 	private string $origin_state;
-	
+
 	/**
 	 * The origin country.
 	 *
 	 * @var string
 	 */
 	private string $origin_country;
-	
+
 	/**
 	 * The origin postcode.
 	 *
 	 * @var string
 	 */
 	private string $origin_postcode;
-	
+
 	/**
 	 * DHL API type.
 	 *
 	 * @var string
 	 */
 	private string $api_type = 'rest';
-	
+
 	/**
 	 * DHL REST API OAuth instance.
 	 *
 	 * @var REST_API_OAuth
 	 */
 	private $rest_api_oauth;
-	
+
 	/**
 	 * Notifier instance
 	 *
 	 * @var Notifier
 	 */
 	public $notifier;
-	
+
 	/**
 	 * Logger instance
 	 *
 	 * @var Logger
 	 */
 	public $logger;
-	
+
 	/**
 	 * Debug mode
 	 *
 	 * @var bool
 	 */
 	public $debug;
-	
+
 	/**
 	 * Environment
 	 *
 	 * @var string
 	 */
 	public $environment;
-	
+
 	/**
 	 * Services
 	 *
 	 * @var array
 	 */
 	private $services;
-	
+
 	/**
 	 * Custom services
 	 *
 	 * @var array
 	 */
 	private $custom_services;
+
+	/**
+	 * Enable service point lookup tools.
+	 *
+	 * @var bool
+	 */
+	private bool $service_point_lookup;
+
+	/**
+	 * Enable landed cost estimates.
+	 *
+	 * @var bool
+	 */
+	private bool $landed_cost_estimate;
+
+	/**
+	 * Enable scheduled tracking sync.
+	 *
+	 * @var bool
+	 */
+	private bool $tracking_sync;
+
+	/**
+	 * Send customer-visible tracking update notes.
+	 *
+	 * @var bool
+	 */
+	private bool $tracking_customer_notifications;
 
 	/**
 	 * Constructor.
@@ -256,29 +284,33 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$this->init_settings();
 
 		// Define user set variables.
-		$this->title                          = $this->get_option( 'title' );
-		$this->environment                    = $this->get_option( 'environment', 'test' );
-		$this->api_user                       = $this->get_option( 'api_user' );
-		$this->api_key                        = $this->get_option( 'api_key' );
-		$this->shipper_number                 = $this->get_option( 'shipper_number' );
-		$this->debug                          = 'yes' === $this->get_option( 'debug' );
-		$this->destination_address_validation = 'yes' === $this->get_option( 'address_validation' );
-		$this->dim_unit                       = $this->get_option( 'dimension_unit' );
-		$this->weight_unit                    = $this->get_option( 'weight_unit' );
-		$this->units                          = $this->weight_unit === 'KG' ? 'metric' : 'imperial';
-		$this->packing_method                 = $this->get_option( 'packing_method', 'per_item' );
-		$this->boxes                          = $this->get_option( 'boxes', array() );
-		$this->services                       = $this->get_option( 'services', array() );
-		$this->custom_services                = $this->get_option( 'custom_services', array() );
-		$this->offer_rates                    = $this->get_option( 'offer_rates', 'all' );
-		$this->fallback                       = $this->get_option( 'fallback' );
-		$this->residential                    = 'yes' === $this->get_option( 'residential' );
-		$this->insuredvalue                   = 'yes' === $this->get_option( 'insuredvalue' );
-		$this->origin_addressline             = $this->get_option( 'origin_addressline', '' );
-		$this->origin_city                    = $this->get_option( 'origin_city', '' );
-		$this->origin_state                   = $this->get_option( 'origin_state', '' );
-		$this->origin_country                 = $this->get_option( 'origin_country', WC()->countries->get_base_country() );
-		$this->origin_postcode                = $this->get_option( 'origin_postcode', '' );
+		$this->title                           = $this->get_option( 'title' );
+		$this->environment                     = $this->get_option( 'environment', 'test' );
+		$this->api_user                        = $this->get_option( 'api_user' );
+		$this->api_key                         = $this->get_option( 'api_key' );
+		$this->shipper_number                  = $this->get_option( 'shipper_number' );
+		$this->debug                           = 'yes' === $this->get_option( 'debug' );
+		$this->destination_address_validation  = 'yes' === $this->get_option( 'address_validation' );
+		$this->dim_unit                        = $this->get_option( 'dimension_unit' );
+		$this->weight_unit                     = $this->get_option( 'weight_unit' );
+		$this->units                           = 'KG' === $this->weight_unit ? 'metric' : 'imperial';
+		$this->packing_method                  = $this->get_option( 'packing_method', 'per_item' );
+		$this->boxes                           = $this->get_option( 'boxes', array() );
+		$this->services                        = $this->get_option( 'services', array() );
+		$this->custom_services                 = $this->get_option( 'custom_services', array() );
+		$this->offer_rates                     = $this->get_option( 'offer_rates', 'all' );
+		$this->fallback                        = $this->get_option( 'fallback' );
+		$this->residential                     = 'yes' === $this->get_option( 'residential' );
+		$this->insuredvalue                    = 'yes' === $this->get_option( 'insuredvalue' );
+		$this->service_point_lookup            = 'yes' === $this->get_option( 'service_point_lookup' );
+		$this->landed_cost_estimate            = 'yes' === $this->get_option( 'landed_cost_estimate' );
+		$this->tracking_sync                   = 'yes' === $this->get_option( 'tracking_sync' );
+		$this->tracking_customer_notifications = 'yes' === $this->get_option( 'tracking_customer_notifications' );
+		$this->origin_addressline              = $this->get_option( 'origin_addressline', '' );
+		$this->origin_city                     = $this->get_option( 'origin_city', '' );
+		$this->origin_state                    = $this->get_option( 'origin_state', '' );
+		$this->origin_country                  = $this->get_option( 'origin_country', WC()->countries->get_base_country() );
+		$this->origin_postcode                 = $this->get_option( 'origin_postcode', '' );
 
 		// Register actions.
 		add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -305,19 +337,19 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function init_form_fields() {
 		$this->instance_form_fields = array(
-			'title' => array(
+			'title'                           => array(
 				'title'       => __( 'Method Title', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'This controls the title which the user sees during checkout.', 'woocommerce-shipping-dhl' ),
 				'default'     => __( 'DHL Express', 'woocommerce-shipping-dhl' ),
 				'desc_tip'    => true,
 			),
-			'api_section' => array(
+			'api_section'                     => array(
 				'title'       => __( 'API Settings', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
 				'description' => __( 'Enter your DHL Express API credentials below.', 'woocommerce-shipping-dhl' ),
 			),
-			'environment' => array(
+			'environment'                     => array(
 				'title'       => __( 'Environment', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'Choose whether to use test or production environment.', 'woocommerce-shipping-dhl' ),
@@ -328,28 +360,28 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				),
 				'desc_tip'    => true,
 			),
-			'api_user' => array(
+			'api_user'                        => array(
 				'title'       => __( 'API User', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'Your DHL Express API username.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'api_key' => array(
+			'api_key'                         => array(
 				'title'       => __( 'API Key', 'woocommerce-shipping-dhl' ),
 				'type'        => 'password',
 				'description' => __( 'Your DHL Express API password.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'shipper_number' => array(
+			'shipper_number'                  => array(
 				'title'       => __( 'Shipper Number', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'Your DHL Express account number.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'debug' => array(
+			'debug'                           => array(
 				'title'       => __( 'Debug Mode', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable debug mode', 'woocommerce-shipping-dhl' ),
@@ -357,7 +389,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
-			'address_validation' => array(
+			'address_validation'              => array(
 				'title'       => __( 'Address Validation', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable address validation', 'woocommerce-shipping-dhl' ),
@@ -365,33 +397,33 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
-			'origin_section' => array(
+			'origin_section'                  => array(
 				'title'       => __( 'Origin Settings', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
 				'description' => __( 'Enter your shipping origin details below.', 'woocommerce-shipping-dhl' ),
 			),
-			'origin_addressline' => array(
+			'origin_addressline'              => array(
 				'title'       => __( 'Address Line', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'The shipping origin address.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'origin_city' => array(
+			'origin_city'                     => array(
 				'title'       => __( 'City', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'The shipping origin city.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'origin_state' => array(
+			'origin_state'                    => array(
 				'title'       => __( 'State', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'The shipping origin state code (e.g., CA for California).', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'origin_country' => array(
+			'origin_country'                  => array(
 				'title'       => __( 'Country', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'The shipping origin country.', 'woocommerce-shipping-dhl' ),
@@ -399,19 +431,19 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'options'     => WC()->countries->get_countries(),
 				'desc_tip'    => true,
 			),
-			'origin_postcode' => array(
+			'origin_postcode'                 => array(
 				'title'       => __( 'Postcode', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'The shipping origin postcode.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
 				'desc_tip'    => true,
 			),
-			'packaging_section' => array(
+			'packaging_section'               => array(
 				'title'       => __( 'Packaging Settings', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
 				'description' => __( 'Configure packaging settings for shipping.', 'woocommerce-shipping-dhl' ),
 			),
-			'dimension_unit' => array(
+			'dimension_unit'                  => array(
 				'title'       => __( 'Dimension Unit', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'The unit of measurement for package dimensions.', 'woocommerce-shipping-dhl' ),
@@ -422,7 +454,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				),
 				'desc_tip'    => true,
 			),
-			'weight_unit' => array(
+			'weight_unit'                     => array(
 				'title'       => __( 'Weight Unit', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'The unit of measurement for package weight.', 'woocommerce-shipping-dhl' ),
@@ -433,7 +465,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				),
 				'desc_tip'    => true,
 			),
-			'packing_method' => array(
+			'packing_method'                  => array(
 				'title'       => __( 'Packing Method', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'Choose how items are packed for shipping.', 'woocommerce-shipping-dhl' ),
@@ -445,26 +477,26 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				),
 				'desc_tip'    => true,
 			),
-			'boxes' => array(
+			'boxes'                           => array(
 				'type' => 'boxes',
 			),
-			'services_section' => array(
+			'services_section'                => array(
 				'title'       => __( 'Service Settings', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
 				'description' => __( 'Configure available shipping services.', 'woocommerce-shipping-dhl' ),
 			),
-			'services' => array(
+			'services'                        => array(
 				'type' => 'services',
 			),
-			'custom_services' => array(
+			'custom_services'                 => array(
 				'type' => 'services_table',
 			),
-			'options_section' => array(
+			'options_section'                 => array(
 				'title'       => __( 'Additional Options', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
 				'description' => __( 'Configure additional shipping options.', 'woocommerce-shipping-dhl' ),
 			),
-			'residential' => array(
+			'residential'                     => array(
 				'title'       => __( 'Residential Address', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Treat destination addresses as residential', 'woocommerce-shipping-dhl' ),
@@ -472,7 +504,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
-			'insuredvalue' => array(
+			'insuredvalue'                    => array(
 				'title'       => __( 'Insurance', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable insurance for packages', 'woocommerce-shipping-dhl' ),
@@ -480,7 +512,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
-			'offer_rates' => array(
+			'offer_rates'                     => array(
 				'title'       => __( 'Offer Rates', 'woocommerce-shipping-dhl' ),
 				'type'        => 'select',
 				'description' => __( 'Choose which rates to display to customers.', 'woocommerce-shipping-dhl' ),
@@ -491,11 +523,43 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				),
 				'desc_tip'    => true,
 			),
-			'fallback' => array(
+			'fallback'                        => array(
 				'title'       => __( 'Fallback Rate', 'woocommerce-shipping-dhl' ),
 				'type'        => 'text',
 				'description' => __( 'If DHL returns no rates, this rate will be used. Leave blank to disable.', 'woocommerce-shipping-dhl' ),
 				'default'     => '',
+				'desc_tip'    => true,
+			),
+			'service_point_lookup'            => array(
+				'title'       => __( 'Service Points', 'woocommerce-shipping-dhl' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable service point lookup tools on DHL orders', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Adds order actions to retrieve nearby DHL service points for the destination.', 'woocommerce-shipping-dhl' ),
+				'default'     => 'no',
+				'desc_tip'    => true,
+			),
+			'landed_cost_estimate'            => array(
+				'title'       => __( 'Landed Cost', 'woocommerce-shipping-dhl' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable landed cost estimate tools on DHL orders', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Adds order actions to calculate duties and tax estimates using DHL landed-cost API.', 'woocommerce-shipping-dhl' ),
+				'default'     => 'no',
+				'desc_tip'    => true,
+			),
+			'tracking_sync'                   => array(
+				'title'       => __( 'Tracking Sync', 'woocommerce-shipping-dhl' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable scheduled DHL tracking sync', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Runs periodic tracking refresh for DHL shipments using WP-Cron.', 'woocommerce-shipping-dhl' ),
+				'default'     => 'no',
+				'desc_tip'    => true,
+			),
+			'tracking_customer_notifications' => array(
+				'title'       => __( 'Tracking Notifications', 'woocommerce-shipping-dhl' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Add customer-visible order notes on tracking changes', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'When scheduled tracking finds a new status, a customer note is added to the order.', 'woocommerce-shipping-dhl' ),
+				'default'     => 'no',
 				'desc_tip'    => true,
 			),
 		);
@@ -530,7 +594,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function generate_services_table_html() {
 		ob_start();
-		$services = $this->get_dhl_services();
+		$services        = $this->get_dhl_services();
 		$custom_services = $this->get_custom_services();
 		include dirname( __FILE__ ) . '/views/html-services-table.php';
 		return ob_get_clean();
@@ -563,7 +627,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @param array $package Package to ship.
 	 * @return array
 	 */
-	protected function prepare_package_requests( $package ) {
+	public function prepare_package_requests( $package ) {
 		switch ( $this->packing_method ) {
 			case 'box_packing':
 				return $this->box_shipping( $package );
@@ -583,7 +647,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @param array $rates Shipping rates.
 	 * @return void
 	 */
-	protected function process_and_add_rates( $rates ) {
+	public function process_and_add_rates( $rates ) {
 		if ( 'cheapest' === $this->offer_rates ) {
 			$cheapest_rate = null;
 			$cheapest_cost = null;
@@ -613,7 +677,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return array
 	 */
 	protected function per_item_shipping( $package ) {
-		$requests = array();
+		$requests   = array();
 		$api_client = $this->get_api_client( $package );
 
 		// Add each item as its own package.
@@ -623,8 +687,8 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 			}
 
 			$request = $api_client->build_individually_packed_package_for_rate_request( $values );
-			
-			// Skip packages with zero weight
+
+			// Skip packages with zero weight.
 			if ( empty( $request['weight']['value'] ) || '0' === $request['weight']['value'] ) {
 				continue;
 			}
@@ -642,7 +706,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return array
 	 */
 	protected function box_shipping( $package ) {
-		$requests = array();
+		$requests   = array();
 		$api_client = $this->get_api_client( $package );
 
 		// Get the box packer.
@@ -650,7 +714,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$box_packer->set_items( $this->get_packable_items( $package ) );
 
 		$boxes = $this->get_shipping_boxes();
-		
+
 		if ( empty( $boxes ) ) {
 			return $this->per_item_shipping( $package );
 		}
@@ -659,15 +723,15 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		foreach ( $boxes as $key => $box ) {
 			$box_packer->add_box( $box );
 		}
-		
+
 		// Pack the boxes.
-		$packed_boxes = $box_packer->pack();
+		$packed_boxes   = $box_packer->pack();
 		$packages_count = count( $packed_boxes );
 
 		foreach ( $packed_boxes as $packed_box ) {
 			$request = $api_client->build_packed_box_package_for_rate_request( $packed_box, $packages_count );
-			
-			// Skip packages with zero weight
+
+			// Skip packages with zero weight.
 			if ( empty( $request['weight']['value'] ) || '0' === $request['weight']['value'] ) {
 				continue;
 			}
@@ -702,12 +766,12 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		// Create a single package request with total weight.
 		$request = array(
 			'weight' => array(
-				'value' => (string) $this->get_formatted_measurement( $total_weight ),
+				'value'             => (string) $this->get_formatted_measurement( $total_weight ),
 				'unitOfMeasurement' => $this->get_weight_unit(),
 			),
 		);
 
-		// Skip packages with zero weight
+		// Skip packages with zero weight.
 		if ( empty( $request['weight']['value'] ) || '0' === $request['weight']['value'] ) {
 			return array();
 		}
@@ -732,7 +796,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 			}
 
 			// Skip products with no weight or dimensions.
-			if ( empty( $product->get_weight() ) && 
+			if ( empty( $product->get_weight() ) &&
 				( empty( $product->get_length() ) || empty( $product->get_width() ) || empty( $product->get_height() ) ) ) {
 				continue;
 			}
@@ -764,7 +828,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function get_shipping_boxes() {
 		$boxes = array();
-		
+
 		if ( empty( $this->boxes ) ) {
 			return $boxes;
 		}
@@ -775,20 +839,20 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 			}
 
 			$box_id = isset( $box['id'] ) ? $box['id'] : '';
-			
+
 			$new_box = array(
-				'id'       => $box_id,
-				'name'     => isset( $box['name'] ) ? $box['name'] : '',
-				'length'   => isset( $box['length'] ) ? $this->get_formatted_measurement( $box['length'] ) : 0,
-				'width'    => isset( $box['width'] ) ? $this->get_formatted_measurement( $box['width'] ) : 0,
-				'height'   => isset( $box['height'] ) ? $this->get_formatted_measurement( $box['height'] ) : 0,
+				'id'         => $box_id,
+				'name'       => isset( $box['name'] ) ? $box['name'] : '',
+				'length'     => isset( $box['length'] ) ? $this->get_formatted_measurement( $box['length'] ) : 0,
+				'width'      => isset( $box['width'] ) ? $this->get_formatted_measurement( $box['width'] ) : 0,
+				'height'     => isset( $box['height'] ) ? $this->get_formatted_measurement( $box['height'] ) : 0,
 				'box_weight' => isset( $box['box_weight'] ) ? $this->get_formatted_measurement( $box['box_weight'] ) : 0,
 				'max_weight' => isset( $box['max_weight'] ) ? $this->get_formatted_measurement( $box['max_weight'] ) : 0,
 			);
-			
+
 			$boxes[] = $new_box;
 		}
-		
+
 		return $boxes;
 	}
 
@@ -958,31 +1022,33 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		}
 
 		if ( is_array( $message ) || is_object( $message ) ) {
-			$message = print_r( $message, true );
+			$encoded_message = wp_json_encode( $message );
+			$message         = false !== $encoded_message ? $encoded_message : __( 'Unable to encode debug message.', 'woocommerce-shipping-dhl' );
 		}
 
 		if ( ! empty( $data ) ) {
-			$message .= ' | ' . print_r( $data, true );
+			$encoded_data = wp_json_encode( $data );
+			$message     .= ' | ' . ( false !== $encoded_data ? $encoded_data : __( 'Unable to encode debug payload.', 'woocommerce-shipping-dhl' ) );
 		}
 
 		switch ( $type ) {
 			case 'error':
 				$this->logger->error( $message );
-				
+
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'error', $group );
 				}
 				break;
 			case 'warning':
 				$this->logger->warning( $message );
-				
+
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'warning', $group );
 				}
 				break;
 			default:
 				$this->logger->info( $message );
-				
+
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'info', $group );
 				}
@@ -993,11 +1059,11 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	/**
 	 * Get the rate ID.
 	 *
-	 * @param string $code Service code.
+	 * @param string $suffix Service code suffix.
 	 * @return string
 	 */
-	public function get_rate_id( $code ) {
-		return $this->id . '_' . $code . '_' . $this->instance_id;
+	public function get_rate_id( $suffix = '' ) {
+		return $this->id . '_' . $suffix . '_' . $this->instance_id;
 	}
 
 	/**
@@ -1007,14 +1073,30 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function get_dhl_services() {
 		$services = $this->get_dhl_services_from_data();
-		
-		// Format services to just service name for display
+
+		// Format services to just service name for display.
 		$formatted_services = array();
 		foreach ( $services as $code => $service ) {
-			$formatted_services[ $code ] = __( $service['name'], 'woocommerce-shipping-dhl' );
+			if ( is_array( $service ) && isset( $service['name'] ) ) {
+				$service_name = $service['name'];
+			} elseif ( is_string( $service ) ) {
+				$service_name = $service;
+			} else {
+				continue;
+			}
+
+			$formatted_services[ (string) $code ] = $service_name;
 		}
-		
-		return $formatted_services;
+
+		/**
+		 * Filters the DHL services shown in instance settings.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param array           $formatted_services Service code => service label pairs.
+		 * @param WC_Shipping_DHL $shipping_method    Current shipping method instance.
+		 */
+		return apply_filters( 'woocommerce_dhl_services', $formatted_services, $this );
 	}
 
 	/**
@@ -1033,16 +1115,30 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function get_enabled_service_codes() {
 		$enabled_services = array();
-		$services = $this->get_dhl_services();
-		$custom_services = $this->get_custom_services();
 
-		foreach ( $services as $code => $name ) {
-			if ( isset( $custom_services[ $code ]['enabled'] ) && $custom_services[ $code ]['enabled'] ) {
-				$enabled_services[] = $code;
+		$custom_services = $this->get_custom_services();
+		if ( ! empty( $custom_services ) && is_array( $custom_services ) ) {
+			foreach ( $custom_services as $code => $settings ) {
+				$is_enabled = ! isset( $settings['enabled'] ) || wc_string_to_bool( (string) $settings['enabled'] );
+
+				if ( $is_enabled ) {
+					$enabled_services[] = (string) $code;
+				}
 			}
+
+			return array_values( array_unique( $enabled_services ) );
 		}
 
-		return $enabled_services;
+		if ( ! empty( $this->services ) && is_array( $this->services ) ) {
+			foreach ( $this->services as $code ) {
+				$enabled_services[] = (string) $code;
+			}
+
+			return array_values( array_unique( $enabled_services ) );
+		}
+
+		// Default to enabling all services when no explicit configuration exists.
+		return array_map( 'strval', array_keys( $this->get_dhl_services() ) );
 	}
 
 	/**
@@ -1145,6 +1241,42 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	}
 
 	/**
+	 * Check if service point lookup is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_service_point_lookup_enabled() {
+		return $this->service_point_lookup;
+	}
+
+	/**
+	 * Check if landed cost estimate is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_landed_cost_estimate_enabled() {
+		return $this->landed_cost_estimate;
+	}
+
+	/**
+	 * Check if scheduled tracking sync is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_tracking_sync_enabled() {
+		return $this->tracking_sync;
+	}
+
+	/**
+	 * Check if customer tracking notifications are enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_tracking_customer_notifications_enabled() {
+		return $this->tracking_customer_notifications;
+	}
+
+	/**
 	 * Set the valid destination address flag.
 	 *
 	 * @param bool $valid Valid flag.
@@ -1161,7 +1293,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return bool
 	 */
 	public function has_package_service_options( $country_code ) {
-		// Check if the destination is supported for service options. 
+		// Check if the destination is supported for service options.
 		// For now, return true for all countries, but this can be refined if needed.
 		return true;
 	}

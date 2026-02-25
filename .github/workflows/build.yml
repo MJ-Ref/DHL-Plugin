@@ -6,9 +6,6 @@ on:
         required: true
         type: string
         description: 'The name of the plugin (e.g. woocommerce-shipping-dhl)'
-    secrets:
-      COMPOSER_AUTH:
-        required: true
     outputs:
       plugin_name:
         description: "The name of the plugin"
@@ -31,22 +28,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
+          cache: 'npm'
 
-      - name: Install PNPM dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install npm dependencies
+        run: npm ci
 
       - name: Build plugin zip
-        env:
-          COMPOSER_AUTH: '{"github-oauth":{"github.com": "${{ secrets.COMPOSER_AUTH }}"}}'
-        run: pnpm build
+        run: npm run build
 
       - name: Upload plugin zip
         uses: actions/upload-artifact@v4

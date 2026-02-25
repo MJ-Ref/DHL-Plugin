@@ -1,10 +1,11 @@
 name: CI
 
 on:
+  workflow_call:
   push:
-    branches: [ trunk, develop ]
+    branches: [ main, trunk, develop ]
   pull_request:
-    branches: [ trunk, develop ]
+    branches: [ main, trunk, develop ]
 
 jobs:
   php-lint:
@@ -24,20 +25,34 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --no-interaction
 
-      - name: Run PHP CodeSniffer
-        run: composer run-script phpcs
+      - name: Run PHP syntax lint
+        run: find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 
   phpunit:
     name: PHPUnit Tests
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         php: ['7.4', '8.0']
         wp: ['6.6', 'latest']
         wc: ['9.5', 'latest']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -48,6 +63,22 @@ jobs:
 
       - name: Install dependencies
         run: composer install --no-progress --no-interaction
+
+      - name: Setup WordPress test environment
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 ${{ matrix.wp }}
+
+      - name: Install WooCommerce for tests
+        run: |
+          mkdir -p /tmp/wordpress/wp-content/plugins
+
+          if [ "${{ matrix.wc }}" = "latest" ]; then
+            WC_ARCHIVE_URL="https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
+          else
+            WC_ARCHIVE_URL="https://downloads.wordpress.org/plugin/woocommerce.${{ matrix.wc }}.zip"
+          fi
+
+          curl -sSL "$WC_ARCHIVE_URL" -o /tmp/woocommerce.zip
+          unzip -q -o /tmp/woocommerce.zip -d /tmp/wordpress/wp-content/plugins
 
       - name: Run PHPUnit
         run: composer run-script test

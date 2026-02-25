@@ -38,7 +38,8 @@ class Logger {
 	 */
 	private function log( $message, $level ) {
 		if ( ! is_scalar( $message ) ) {
-			$message = print_r( $message, true );
+			$encoded_message = wp_json_encode( $message );
+			$message         = false !== $encoded_message ? $encoded_message : __( 'Unable to encode log message.', 'woocommerce-shipping-dhl' );
 		}
 
 		$this->wc_logger->log( $level, $message, array( 'source' => 'woocommerce-shipping-dhl' ) );

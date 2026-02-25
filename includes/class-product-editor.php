@@ -35,7 +35,7 @@ class Product_Editor {
 		}
 
 		$dhl_length = $product_object->get_meta( '_dhl_length', true );
-		$dhl_width = $product_object->get_meta( '_dhl_width', true );
+		$dhl_width  = $product_object->get_meta( '_dhl_width', true );
 		$dhl_height = $product_object->get_meta( '_dhl_height', true );
 
 		require WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/views/html-product-dimensions.php';
@@ -47,16 +47,24 @@ class Product_Editor {
 	 * @param \WC_Product $product Product being saved.
 	 */
 	public function save_product_dimensions( $product ) {
+		$meta_nonce = isset( $_POST['woocommerce_meta_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ) : '';
+		if ( empty( $meta_nonce ) || ! wp_verify_nonce( $meta_nonce, 'woocommerce_save_data' ) ) {
+			return;
+		}
+
 		if ( isset( $_POST['_dhl_length'] ) ) {
-			$product->update_meta_data( '_dhl_length', wc_clean( wp_unslash( $_POST['_dhl_length'] ) ) );
+			$dhl_length = sanitize_text_field( wp_unslash( $_POST['_dhl_length'] ) );
+			$product->update_meta_data( '_dhl_length', wc_format_decimal( $dhl_length ) );
 		}
 
 		if ( isset( $_POST['_dhl_width'] ) ) {
-			$product->update_meta_data( '_dhl_width', wc_clean( wp_unslash( $_POST['_dhl_width'] ) ) );
+			$dhl_width = sanitize_text_field( wp_unslash( $_POST['_dhl_width'] ) );
+			$product->update_meta_data( '_dhl_width', wc_format_decimal( $dhl_width ) );
 		}
 
 		if ( isset( $_POST['_dhl_height'] ) ) {
-			$product->update_meta_data( '_dhl_height', wc_clean( wp_unslash( $_POST['_dhl_height'] ) ) );
+			$dhl_height = sanitize_text_field( wp_unslash( $_POST['_dhl_height'] ) );
+			$product->update_meta_data( '_dhl_height', wc_format_decimal( $dhl_height ) );
 		}
 	}
-} 
+}

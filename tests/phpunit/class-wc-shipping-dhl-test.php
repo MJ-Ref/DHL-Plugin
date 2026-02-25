@@ -11,6 +11,20 @@
 class WC_Shipping_DHL_Test extends WP_UnitTestCase {
 
 	/**
+	 * Shipping zone under test.
+	 *
+	 * @var WC_Shipping_Zone
+	 */
+	protected $shipping_zone;
+
+	/**
+	 * DHL shipping method under test.
+	 *
+	 * @var WooCommerce\DHL\WC_Shipping_DHL
+	 */
+	protected $shipping_method;
+
+	/**
 	 * Setup test environment.
 	 */
 	public function setUp(): void {
@@ -102,6 +116,26 @@ class WC_Shipping_DHL_Test extends WP_UnitTestCase {
 		$this->assertTrue( in_array( 'shipping-zones', $this->shipping_method->supports, true ) );
 		$this->assertTrue( in_array( 'instance-settings', $this->shipping_method->supports, true ) );
 		$this->assertTrue( in_array( 'settings', $this->shipping_method->supports, true ) );
+	}
+
+	/**
+	 * Test that new DHL production-readiness feature toggles are present.
+	 */
+	public function test_feature_toggle_fields_exist() {
+		$this->assertArrayHasKey( 'service_point_lookup', $this->shipping_method->instance_form_fields );
+		$this->assertArrayHasKey( 'landed_cost_estimate', $this->shipping_method->instance_form_fields );
+		$this->assertArrayHasKey( 'tracking_sync', $this->shipping_method->instance_form_fields );
+		$this->assertArrayHasKey( 'tracking_customer_notifications', $this->shipping_method->instance_form_fields );
+	}
+
+	/**
+	 * Test feature-toggle defaults.
+	 */
+	public function test_feature_toggle_defaults_disabled() {
+		$this->assertFalse( $this->shipping_method->is_service_point_lookup_enabled() );
+		$this->assertFalse( $this->shipping_method->is_landed_cost_estimate_enabled() );
+		$this->assertFalse( $this->shipping_method->is_tracking_sync_enabled() );
+		$this->assertFalse( $this->shipping_method->is_tracking_customer_notifications_enabled() );
 	}
 
 	/**

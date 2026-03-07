@@ -58,6 +58,7 @@ npm ci
 - Ensure product weights and dimensions are populated for better rate and shipment quality.
 - For landed-cost estimates, maintain commodity data where applicable.
 - Tracking sync uses WP-Cron and is disabled by default.
+- Shipment labels and proof-of-delivery documents are stored privately and downloaded through authenticated admin links.
 
 ## Development
 
@@ -87,7 +88,12 @@ composer run-script test
 composer run-script phpcs
 vendor/bin/phpcs . --standard=.phpcs.security.xml --ignore=vendor,node_modules
 npm run lint:js
-npm run lint:css
+```
+
+Build a production ZIP:
+
+```bash
+npm run build
 ```
 
 ## Support

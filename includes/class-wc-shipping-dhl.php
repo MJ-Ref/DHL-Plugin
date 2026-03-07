@@ -697,7 +697,10 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				continue;
 			}
 
-			$requests[] = $request;
+			$quantity = max( 1, (int) $values['quantity'] );
+			for ( $index = 0; $index < $quantity; $index++ ) {
+				$requests[] = $request;
+			}
 		}
 
 		return $requests;

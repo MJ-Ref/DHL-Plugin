@@ -5,6 +5,8 @@
  * @package WC_Shipping_DHL
  */
 
+use WooCommerce\DHL\API\REST\Shipment_Client;
+
 /**
  * Class WC_Shipping_DHL_Test
  */
@@ -160,5 +162,80 @@ class WC_Shipping_DHL_Test extends WP_UnitTestCase {
 		
 		$this->shipping_method->set_is_valid_destination_address( false );
 		$this->assertFalse( $property->getValue( $this->shipping_method ) );
+	}
+
+	/**
+	 * Test per-item packing emits one package request per quantity.
+	 */
+	public function test_per_item_shipping_honours_quantity() {
+		$product = new WC_Product_Simple();
+		$product->set_name( 'Quantity Product' );
+		$product->set_regular_price( '15.00' );
+		$product->set_weight( '2.5' );
+		$product->set_length( '10' );
+		$product->set_width( '8' );
+		$product->set_height( '4' );
+		$product->save();
+
+		$package = array(
+			'destination' => array(
+				'country'   => 'US',
+				'state'     => 'NY',
+				'postcode'  => '10001',
+				'city'      => 'New York',
+				'address_1' => '123 Test Street',
+			),
+			'contents'    => array(
+				123 => array(
+					'data'     => $product,
+					'quantity' => 3,
+				),
+			),
+		);
+
+		$requests = $this->shipping_method->prepare_package_requests( $package );
+
+		$this->assertCount( 3, $requests );
+		$this->assertSame( '2.5', $requests[0]['weight']['value'] );
+	}
+
+	/**
+	 * Test shipment payload packages reuse the configured packing logic.
+	 */
+	public function test_shipment_client_builds_multiple_packages_from_order() {
+		$product = new WC_Product_Simple();
+		$product->set_name( 'Shipment Product' );
+		$product->set_regular_price( '12.00' );
+		$product->set_weight( '1.2' );
+		$product->set_length( '9' );
+		$product->set_width( '6' );
+		$product->set_height( '3' );
+		$product->save();
+
+		$order = wc_create_order();
+		$order->set_address(
+			array(
+				'first_name' => 'Test',
+				'last_name'  => 'User',
+				'address_1'  => '123 Shipping Ln',
+				'city'       => 'New York',
+				'state'      => 'NY',
+				'postcode'   => '10001',
+				'country'    => 'US',
+			),
+			'shipping'
+		);
+		$order->add_product( $product, 2 );
+		$order->calculate_totals();
+
+		$shipment_client = new Shipment_Client( $this->shipping_method );
+		$reflection      = new ReflectionMethod( $shipment_client, 'get_order_packages' );
+		$reflection->setAccessible( true );
+
+		$packages = $reflection->invoke( $shipment_client, $order );
+
+		$this->assertCount( 2, $packages );
+		$this->assertSame( 1.2, $packages[0]['weight'] );
+		$this->assertSame( 9, $packages[0]['dimensions']['length'] );
 	}
 }

@@ -54,9 +54,8 @@ class WC_Shipping_DHL_Admin {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Used only to scope assets on the settings screen.
-		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : '';
-
-		if ( 'dhl' !== $section && 'dhl_settings' !== $section ) {
+		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : '';
+		if ( 'shipping' !== $tab ) {
 			return;
 		}
 

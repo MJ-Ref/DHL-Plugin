@@ -80,13 +80,12 @@ class WC_Shipping_DHL_Init {
 	 */
 	private function hooks() {
 		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
-		add_action( 'before_woocommerce_init', array( $this, 'declare_product_editor_compatibility' ) );
-		add_action( 'woocommerce_shipping_init', array( $this, 'shipping_init' ) );
-		add_filter( 'woocommerce_shipping_methods', array( $this, 'add_shipping_method' ) );
-		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_integration' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ) );
-		add_action( 'wp_enqueue_scripts', array( $this, 'frontend_scripts' ) );
-	}
+			add_action( 'before_woocommerce_init', array( $this, 'declare_product_editor_compatibility' ) );
+			add_action( 'woocommerce_shipping_init', array( $this, 'shipping_init' ) );
+			add_filter( 'woocommerce_shipping_methods', array( $this, 'add_shipping_method' ) );
+			add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_integration' ) );
+			add_action( 'wp_enqueue_scripts', array( $this, 'frontend_scripts' ) );
+		}
 
 	/**
 	 * Declare High-Performance Order Storage compatibility.

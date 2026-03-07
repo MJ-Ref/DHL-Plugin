@@ -371,24 +371,155 @@ class Shipment_Client {
 	 * @return array
 	 */
 	private function get_order_packages( WC_Order $order ): array {
+		$package_requests = $this->build_order_package_requests( $order );
+		if ( empty( $package_requests ) ) {
+			return array( $this->build_fallback_shipment_package( $order ) );
+		}
+
+		$packages = array();
+		foreach ( $package_requests as $index => $package_request ) {
+			if ( ! is_array( $package_request ) ) {
+				continue;
+			}
+
+			$packages[] = $this->build_shipment_package_from_rate_request( $package_request, ( $index + 1 ), $order );
+		}
+
+		return ! empty( $packages ) ? $packages : array( $this->build_fallback_shipment_package( $order ) );
+	}
+
+	/**
+	 * Build package requests for an order using the configured shipping packing mode.
+	 *
+	 * @param WC_Order $order Order.
+	 *
+	 * @return array
+	 */
+	private function build_order_package_requests( WC_Order $order ): array {
+		$package = $this->build_rate_package_from_order( $order );
+		if ( empty( $package['contents'] ) ) {
+			return array();
+		}
+
+		$package_requests = $this->shipping_method->prepare_package_requests( $package );
+
+		return is_array( $package_requests ) ? $package_requests : array();
+	}
+
+	/**
+	 * Build a WooCommerce-style rate package array from an order.
+	 *
+	 * @param WC_Order $order Order.
+	 *
+	 * @return array
+	 */
+	private function build_rate_package_from_order( WC_Order $order ): array {
+		$shipping_country  = $order->get_shipping_country();
+		$shipping_state    = $order->get_shipping_state();
+		$shipping_postcode = $order->get_shipping_postcode();
+		$shipping_city     = $order->get_shipping_city();
+		$shipping_address  = $order->get_shipping_address_1();
+		$shipping_address2 = $order->get_shipping_address_2();
+
+		if ( '' === $shipping_country ) {
+			$shipping_country  = $order->get_billing_country();
+			$shipping_state    = $order->get_billing_state();
+			$shipping_postcode = $order->get_billing_postcode();
+			$shipping_city     = $order->get_billing_city();
+			$shipping_address  = $order->get_billing_address_1();
+			$shipping_address2 = $order->get_billing_address_2();
+		}
+
+		$package = array(
+			'destination' => array(
+				'country'   => $shipping_country,
+				'state'     => $shipping_state,
+				'postcode'  => $shipping_postcode,
+				'city'      => $shipping_city,
+				'address'   => $shipping_address,
+				'address_1' => $shipping_address,
+				'address_2' => $shipping_address2,
+			),
+			'contents'    => array(),
+		);
+
+		foreach ( $order->get_items( 'line_item' ) as $item_id => $item ) {
+			if ( ! $item instanceof WC_Order_Item_Product ) {
+				continue;
+			}
+
+			$product = $item->get_product();
+			if ( ! $product instanceof WC_Product || ! $product->needs_shipping() ) {
+				continue;
+			}
+
+			$package['contents'][ $item_id ] = array(
+				'data'     => $product,
+				'quantity' => max( 1, (int) $item->get_quantity() ),
+			);
+		}
+
+		return $package;
+	}
+
+	/**
+	 * Convert a rate-style package request into a shipment package payload.
+	 *
+	 * @param array    $package_request Rate package request.
+	 * @param int      $package_index   Package sequence.
+	 * @param WC_Order $order           Order.
+	 *
+	 * @return array
+	 */
+	private function build_shipment_package_from_rate_request( array $package_request, int $package_index, WC_Order $order ): array {
+		$weight_value = isset( $package_request['weight']['value'] ) ? (float) $package_request['weight']['value'] : 0.0;
+		$weight_value = max( 0.1, $weight_value );
+
+		$package = array(
+			'typeCode'           => '2BP',
+			'weight'             => (float) wc_format_decimal( $weight_value, 3 ),
+			'customerReferences' => array(
+				array(
+					'typeCode' => 'CU',
+					'value'    => (string) $order->get_order_number() . ( $package_index > 1 ? '-' . $package_index : '' ),
+				),
+			),
+		);
+
+		if ( ! empty( $package_request['dimensions'] ) && is_array( $package_request['dimensions'] ) ) {
+			$package['dimensions'] = array(
+				'length' => (int) max( 1, round( (float) ( $package_request['dimensions']['length'] ?? 0 ) ) ),
+				'width'  => (int) max( 1, round( (float) ( $package_request['dimensions']['width'] ?? 0 ) ) ),
+				'height' => (int) max( 1, round( (float) ( $package_request['dimensions']['height'] ?? 0 ) ) ),
+			);
+		}
+
+		return $package;
+	}
+
+	/**
+	 * Build a conservative fallback shipment package when packing data cannot be derived.
+	 *
+	 * @param WC_Order $order Order.
+	 *
+	 * @return array
+	 */
+	private function build_fallback_shipment_package( WC_Order $order ): array {
 		$package_dimensions = $this->get_order_package_dimensions( $order );
 		$total_weight       = $this->get_order_total_weight( $order );
-		$formatted_weight   = $this->shipping_method->format_weight( $total_weight, $this->shipping_method->get_weight_unit() );
 
 		return array(
-			array(
-				'typeCode'           => '2BP',
-				'weight'             => $formatted_weight,
-				'dimensions'         => array(
-					'length' => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['length'], $this->shipping_method->get_dimension_unit() ) ),
-					'width'  => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['width'], $this->shipping_method->get_dimension_unit() ) ),
-					'height' => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['height'], $this->shipping_method->get_dimension_unit() ) ),
-				),
-				'customerReferences' => array(
-					array(
-						'typeCode' => 'CU',
-						'value'    => (string) $order->get_order_number(),
-					),
+			'typeCode'           => '2BP',
+			'weight'             => (float) wc_format_decimal( $this->shipping_method->format_weight( $total_weight, $this->shipping_method->get_weight_unit() ), 3 ),
+			'dimensions'         => array(
+				'length' => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['length'], $this->shipping_method->get_dimension_unit() ) ),
+				'width'  => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['width'], $this->shipping_method->get_dimension_unit() ) ),
+				'height' => (int) max( 1, $this->shipping_method->format_dimension( $package_dimensions['height'], $this->shipping_method->get_dimension_unit() ) ),
+			),
+			'customerReferences' => array(
+				array(
+					'typeCode' => 'CU',
+					'value'    => (string) $order->get_order_number(),
 				),
 			),
 		);
@@ -546,10 +677,9 @@ class Shipment_Client {
 			)
 		);
 
-		$package_dimensions = $this->get_order_package_dimensions( $order );
-		$weight             = $this->shipping_method->format_weight( $this->get_order_total_weight( $order ), $this->shipping_method->get_weight_unit() );
-		$dimension_unit     = 'cm' === $this->shipping_method->get_dimension_unit() ? 'cm' : 'in';
-		$weight_unit        = 'KG' === $this->shipping_method->get_weight_unit() ? 'kg' : 'lb';
+		$primary_package = $this->get_primary_order_package( $order );
+		$dimension_unit  = 'cm' === $this->shipping_method->get_dimension_unit() ? 'cm' : 'in';
+		$weight_unit     = 'KG' === $this->shipping_method->get_weight_unit() ? 'kg' : 'lb';
 
 		return array(
 			'address'             => implode( ', ', $address_parts ),
@@ -557,13 +687,36 @@ class Shipment_Client {
 			'language'            => 'eng',
 			'servicePointResults' => '10',
 			'capability'          => '81,74',
-			'weight'              => (string) $weight,
+			'weight'              => (string) ( $primary_package['weight'] ?? '0.5' ),
 			'weightUom'           => $weight_unit,
-			'length'              => (string) max( 1, $this->shipping_method->format_dimension( $package_dimensions['length'], $this->shipping_method->get_dimension_unit() ) ),
-			'width'               => (string) max( 1, $this->shipping_method->format_dimension( $package_dimensions['width'], $this->shipping_method->get_dimension_unit() ) ),
-			'height'              => (string) max( 1, $this->shipping_method->format_dimension( $package_dimensions['height'], $this->shipping_method->get_dimension_unit() ) ),
+			'length'              => (string) (int) max( 1, (int) ( $primary_package['dimensions']['length'] ?? 10 ) ),
+			'width'               => (string) (int) max( 1, (int) ( $primary_package['dimensions']['width'] ?? 10 ) ),
+			'height'              => (string) (int) max( 1, (int) ( $primary_package['dimensions']['height'] ?? 10 ) ),
 			'dimensionsUom'       => $dimension_unit,
 		);
+	}
+
+	/**
+	 * Get the primary shipment package for APIs that only accept a single package summary.
+	 *
+	 * @param WC_Order $order Order.
+	 *
+	 * @return array
+	 */
+	private function get_primary_order_package( WC_Order $order ): array {
+		$packages = $this->get_order_packages( $order );
+		if ( empty( $packages ) ) {
+			return $this->build_fallback_shipment_package( $order );
+		}
+
+		usort(
+			$packages,
+			static function ( $left, $right ) {
+				return (float) ( $right['weight'] ?? 0 ) <=> (float) ( $left['weight'] ?? 0 );
+			}
+		);
+
+		return is_array( $packages[0] ) ? $packages[0] : $this->build_fallback_shipment_package( $order );
 	}
 
 	/**

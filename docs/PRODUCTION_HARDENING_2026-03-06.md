@@ -2,6 +2,8 @@
 
 Historical note: this document records the hardening pass completed on March 6, 2026. For the current go/no-go state, use `docs/STATUS.md` and `docs/LIVE_DHL_UAT_2026-03-07.md`.
 
+The verification counts and commands below are the exact results from that March 6 hardening pass. They are intentionally preserved as historical evidence and are not the current validation baseline.
+
 ## Scope
 
 This pass addressed the production-readiness gaps found during the March 2026 review:

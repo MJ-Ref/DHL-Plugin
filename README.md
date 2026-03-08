@@ -139,7 +139,7 @@ Note: the browser smoke helper uses the local Codex Playwright wrapper under `$C
 
 - `main` pushes run lint, PHPUnit, PHPStan, security PHPCS, and package an artifact when checks pass.
 - Version tags `v*` publish release ZIPs.
-- A manual GitHub Actions workflow exists for QIT runs against the packaged artifact.
+- GitHub Actions includes both manual and weekly QIT workflows against the packaged artifact.
 
 ## Documentation
 

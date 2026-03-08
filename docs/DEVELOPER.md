@@ -241,6 +241,8 @@ The build packages runtime files only and excludes development-only material suc
   - reusable QIT workflow against a packaged artifact
 - `.github/workflows/qit_manual.yml`
   - manual pre-release entry point for targeted QIT runs
+- `.github/workflows/weekly-cron.yml`
+  - scheduled weekly QIT run against the packaged artifact
 
 ## Current External Constraints
 

@@ -30,8 +30,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'WC_SHIPPING_DHL_VERSION', '1.0.0' );
 define( 'WC_SHIPPING_DHL_PLUGIN_DIR', __DIR__ );
 define( 'WC_SHIPPING_DHL_PLUGIN_URL', untrailingslashit( plugins_url( '', __FILE__ ) ) );
-define( 'WC_SHIPPING_DHL_DIST_DIR', WC_SHIPPING_DHL_PLUGIN_DIR . '/dist' );
-define( 'WC_SHIPPING_DHL_DIST_URL', WC_SHIPPING_DHL_PLUGIN_URL . '/dist' );
 define( 'WC_SHIPPING_DHL_ENVIRONMENT', get_option( 'wc_shipping_dhl_environment', 'test' ) );
 define( 'WC_SHIPPING_DHL_API_VERSION', '2.12.1' );
 

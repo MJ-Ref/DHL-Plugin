@@ -79,27 +79,27 @@ trait Util {
 	/**
 	 * Clean string - removes special characters and replaces non-ASCII chars with ASCII equivalent.
 	 *
-	 * @param string $string String to clean.
+	 * @param string $value String to clean.
 	 * @return string
 	 */
-	public function clean_string( $string ) {
+	public function clean_string( $value ) {
 		// Replace special characters.
-		$string = str_replace( array( "'", '"', '&', '/', '#', '\\' ), ' ', $string );
-		$string = str_replace( array( 'á', 'à', 'â', 'ã', 'ä' ), 'a', $string );
-		$string = str_replace( array( 'é', 'è', 'ê', 'ë' ), 'e', $string );
-		$string = str_replace( array( 'í', 'ì', 'î', 'ï' ), 'i', $string );
-		$string = str_replace( array( 'ó', 'ò', 'ô', 'õ', 'ö' ), 'o', $string );
-		$string = str_replace( array( 'ú', 'ù', 'û', 'ü' ), 'u', $string );
-		$string = str_replace( array( 'ç' ), 'c', $string );
-		$string = str_replace( array( 'ñ' ), 'n', $string );
+		$value = str_replace( array( "'", '"', '&', '/', '#', '\\' ), ' ', $value );
+		$value = str_replace( array( 'á', 'à', 'â', 'ã', 'ä' ), 'a', $value );
+		$value = str_replace( array( 'é', 'è', 'ê', 'ë' ), 'e', $value );
+		$value = str_replace( array( 'í', 'ì', 'î', 'ï' ), 'i', $value );
+		$value = str_replace( array( 'ó', 'ò', 'ô', 'õ', 'ö' ), 'o', $value );
+		$value = str_replace( array( 'ú', 'ù', 'û', 'ü' ), 'u', $value );
+		$value = str_replace( array( 'ç' ), 'c', $value );
+		$value = str_replace( array( 'ñ' ), 'n', $value );
 
 		// Strip all other non-ASCII characters.
-		$string = preg_replace( '/[^(\x20-\x7F)]*/', '', $string );
+		$value = preg_replace( '/[^(\x20-\x7F)]*/', '', $value );
 
 		// Trim.
-		$string = trim( $string );
+		$value = trim( $value );
 
-		return $string;
+		return $value;
 	}
 
 	/**

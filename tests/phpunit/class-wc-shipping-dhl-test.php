@@ -54,6 +54,8 @@ class WC_Shipping_DHL_Test extends WP_UnitTestCase {
 	 * Tear down test environment.
 	 */
 	public function tearDown(): void {
+		$_POST = array();
+		$_REQUEST = array();
 		parent::tearDown();
 		$this->shipping_zone->delete();
 	}
@@ -237,5 +239,93 @@ class WC_Shipping_DHL_Test extends WP_UnitTestCase {
 		$this->assertCount( 2, $packages );
 		$this->assertSame( 1.2, $packages[0]['weight'] );
 		$this->assertSame( 9, $packages[0]['dimensions']['length'] );
+	}
+
+	/**
+	 * Test that array-backed settings persist through process_admin_options.
+	 */
+	public function test_process_admin_options_persists_complex_instance_settings() {
+		$_POST[ $this->shipping_method->get_field_key( 'api_user' ) ]       = 'test-user';
+		$_POST[ $this->shipping_method->get_field_key( 'api_key' ) ]        = 'secret-key';
+		$_POST[ $this->shipping_method->get_field_key( 'shipper_number' ) ] = '123456789';
+		$_POST[ $this->shipping_method->get_field_key( 'origin_addressline' ) ] = '123 Example St';
+		$_POST[ $this->shipping_method->get_field_key( 'origin_city' ) ]        = 'New York';
+		$_POST[ $this->shipping_method->get_field_key( 'origin_state' ) ]       = 'NY';
+		$_POST[ $this->shipping_method->get_field_key( 'origin_country' ) ]     = 'US';
+		$_POST[ $this->shipping_method->get_field_key( 'origin_postcode' ) ]    = '10001';
+		$_POST[ $this->shipping_method->get_field_key( 'packing_method' ) ]     = 'box_packing';
+		$_POST[ $this->shipping_method->get_field_key( 'tracking_sync' ) ]      = '1';
+		$_POST[ $this->shipping_method->get_field_key( 'service_point_lookup' ) ] = '1';
+		$_POST[ $this->shipping_method->get_field_key( 'boxes' ) ] = array(
+			array(
+				'id'         => 'small',
+				'name'       => 'Small Carton',
+				'length'     => '30',
+				'width'      => '22',
+				'height'     => '10',
+				'box_weight' => '0.15',
+				'max_weight' => '2',
+				'enabled'    => '1',
+			),
+			'template' => array(
+				'name' => 'Template row',
+			),
+		);
+		$_POST[ $this->shipping_method->get_field_key( 'services' ) ] = array( 'P', '0', 'INVALID' );
+		$_POST[ $this->shipping_method->get_field_key( 'custom_services' ) ] = array(
+			'P' => array(
+				'code'               => 'P',
+				'name'               => 'DHL Express Worldwide',
+				'adjustment_percent' => '5',
+				'adjustment'         => '2.25',
+				'enabled'            => '1',
+			),
+		);
+		$_REQUEST['instance_id'] = $this->shipping_method->instance_id;
+
+		$this->shipping_method->process_admin_options();
+
+		$reloaded = new WooCommerce\DHL\WC_Shipping_DHL( $this->shipping_method->instance_id );
+		$boxes    = $reloaded->get_option( 'boxes' );
+
+		$this->assertCount( 1, $boxes );
+		$this->assertSame( 'Small Carton', $boxes[0]['name'] );
+		$this->assertSame( '1', $boxes[0]['enabled'] );
+		$this->assertSame( array( 'P', '0' ), $reloaded->get_option( 'services' ) );
+		$this->assertSame( '5', $reloaded->get_option( 'custom_services' )['P']['adjustment_percent'] );
+		$this->assertTrue( $reloaded->is_tracking_sync_enabled() );
+		$this->assertTrue( $reloaded->is_service_point_lookup_enabled() );
+	}
+
+	/**
+	 * Test that malformed legacy array settings no longer break instance loading.
+	 */
+	public function test_shipping_method_normalizes_malformed_array_settings() {
+		$option_key = sprintf( 'woocommerce_%s_%d_settings', $this->shipping_method->id, $this->shipping_method->instance_id );
+		update_option(
+			$option_key,
+			array(
+				'boxes'           => 'broken',
+				'services'        => 'broken',
+				'custom_services' => 'broken',
+			)
+		);
+
+		$reloaded = new WooCommerce\DHL\WC_Shipping_DHL( $this->shipping_method->instance_id );
+
+		$this->assertSame( array(), $reloaded->get_shipping_boxes() );
+		$this->assertSame( array(), $reloaded->get_custom_services() );
+		$this->assertNotEmpty( $reloaded->get_enabled_service_codes() );
+	}
+
+	/**
+	 * Test configuration preflight errors.
+	 */
+	public function test_configuration_error_requires_credentials_and_origin_data() {
+		$error = $this->shipping_method->get_configuration_error();
+
+		$this->assertInstanceOf( WP_Error::class, $error );
+		$this->assertStringContainsString( 'API User', $error->get_error_message() );
+		$this->assertStringContainsString( 'Origin Address Line', $error->get_error_message() );
 	}
 }

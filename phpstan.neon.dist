@@ -1,0 +1,25 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+  level: 1
+  paths:
+    - includes
+    - woocommerce-shipping-dhl.php
+  excludePaths:
+    - includes/data/*
+    - includes/views/*
+    - tests/*
+    - vendor/*
+    - node_modules/*
+  scanFiles:
+    - phpstan-stubs.php
+    - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+    - vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
+  ignoreErrors:
+    - '#Constant WC_SHIPPING_DHL_PLUGIN_URL not found#'
+    - '#WC_Boxpack not found#'
+  parallel:
+    maximumNumberOfProcesses: 1
+  tmpDir: .phpstan/cache

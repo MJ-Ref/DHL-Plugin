@@ -966,6 +966,25 @@ class Shipment_Client {
 			$url = add_query_arg( $query, $url );
 		}
 
+		$cache_key = $this->get_lookup_cache_key( $method, $path, $body, $query );
+		if ( null !== $cache_key ) {
+			$cached_response = get_transient( $cache_key );
+
+			if ( false !== $cached_response && is_array( $cached_response ) ) {
+				$this->shipping_method->debug(
+					__( 'DHL lookup cache hit.', 'woocommerce-shipping-dhl' ),
+					'notice',
+					array(
+						'method' => $method,
+						'path'   => $path,
+						'query'  => $query,
+					)
+				);
+
+				return $cached_response;
+			}
+		}
+
 		$args = array(
 			'method'  => $method,
 			'headers' => $headers,
@@ -976,8 +995,31 @@ class Shipment_Client {
 			$args['body'] = wp_json_encode( $body );
 		}
 
+		$this->shipping_method->debug(
+			__( 'DHL REST request', 'woocommerce-shipping-dhl' ),
+			'notice',
+			array(
+				'method'  => $method,
+				'url'     => $url,
+				'headers' => $headers,
+				'body'    => $body,
+				'query'   => $query,
+			)
+		);
+
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {
+			$this->shipping_method->debug(
+				__( 'DHL REST request failed.', 'woocommerce-shipping-dhl' ),
+				'error',
+				array(
+					'method'  => $method,
+					'path'    => $path,
+					'query'   => $query,
+					'message' => $response->get_error_message(),
+				)
+			);
+
 			return $response;
 		}
 
@@ -987,6 +1029,18 @@ class Shipment_Client {
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
 			$error_message = $this->get_api_error_message( $decoded_body, $status_code );
+
+			$this->shipping_method->debug(
+				__( 'DHL REST API returned an error response.', 'woocommerce-shipping-dhl' ),
+				'error',
+				array(
+					'method'      => $method,
+					'path'        => $path,
+					'query'       => $query,
+					'status_code' => $status_code,
+					'response'    => $decoded_body,
+				)
+			);
 
 			return new WP_Error(
 				'wc_dhl_rest_request_error',
@@ -1006,7 +1060,80 @@ class Shipment_Client {
 			return new WP_Error( 'wc_dhl_rest_parse_error', __( 'Could not parse DHL API response.', 'woocommerce-shipping-dhl' ) );
 		}
 
+		$this->shipping_method->debug(
+			__( 'DHL REST response', 'woocommerce-shipping-dhl' ),
+			'notice',
+			array(
+				'method'      => $method,
+				'path'        => $path,
+				'query'       => $query,
+				'status_code' => $status_code,
+				'response'    => $decoded_body,
+			)
+		);
+
+		if ( null !== $cache_key ) {
+			set_transient( $cache_key, $decoded_body, $this->get_lookup_cache_ttl( $method, $path ) );
+		}
+
 		return $decoded_body;
+	}
+
+	/**
+	 * Build a transient cache key for safe non-mutating lookups.
+	 *
+	 * @param string $method Request method.
+	 * @param string $path   Request path.
+	 * @param array  $body   Request body.
+	 * @param array  $query  Request query.
+	 * @return string|null
+	 */
+	private function get_lookup_cache_key( string $method, string $path, array $body, array $query ): ?string {
+		if ( $this->shipping_method->is_debug_mode_enabled() || ! $this->is_cacheable_lookup( $method, $path ) ) {
+			return null;
+		}
+
+		$fingerprint = array(
+			'environment'    => (string) $this->shipping_method->get_option( 'environment', 'test' ),
+			'api_user'       => (string) $this->shipping_method->get_option( 'api_user', '' ),
+			'shipper_number' => (string) $this->shipping_method->get_shipper_number(),
+			'method'         => $method,
+			'path'           => $path,
+			'body'           => $body,
+			'query'          => $query,
+		);
+
+		return 'wc_dhl_lookup_' . md5( wp_json_encode( $fingerprint ) );
+	}
+
+	/**
+	 * Determine whether a request is safe to cache.
+	 *
+	 * @param string $method Request method.
+	 * @param string $path   Request path.
+	 * @return bool
+	 */
+	private function is_cacheable_lookup( string $method, string $path ): bool {
+		if ( 'GET' === $method && '/servicepoints' === $path ) {
+			return true;
+		}
+
+		return 'POST' === $method && '/landed-cost' === $path;
+	}
+
+	/**
+	 * Get a cache TTL for a non-mutating lookup.
+	 *
+	 * @param string $method Request method.
+	 * @param string $path   Request path.
+	 * @return int
+	 */
+	private function get_lookup_cache_ttl( string $method, string $path ): int {
+		if ( 'POST' === $method && '/landed-cost' === $path ) {
+			return 15 * MINUTE_IN_SECONDS;
+		}
+
+		return HOUR_IN_SECONDS;
 	}
 
 	/**

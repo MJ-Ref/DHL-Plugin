@@ -5,6 +5,10 @@
     <config name="minimum_supported_wp_version" value="6.6" />
     <config name="testVersion" value="7.4-" />
 
+    <file>includes</file>
+    <file>woocommerce-shipping-dhl.php</file>
+    <file>bin</file>
+
     <rule ref="WordPress.Security"/>
     <rule ref="WordPress.DB.PreparedSQL"/>
     <rule ref="WordPress.PHP.DiscouragedPHPFunctions"/>
@@ -13,17 +17,23 @@
     <rule ref="WordPress.WP.DiscouragedFunctions"/>
     <rule ref="Squiz.PHP.Eval.Discouraged"/>
     <rule ref="WordPress.PHP.DevelopmentFunctions"/>
-    <rule ref="WordPress.PHP.StrictComparisons"/>
+    <rule ref="Universal.Operators.StrictComparisons"/>
     <rule ref="WordPress.PHP.DontExtract"/>
     <rule ref="WordPress.PHP.IniSet"/>
     <rule ref="WordPress.PHP.NoSilencedErrors"/>
     <rule ref="Generic.PHP.ForbiddenFunctions"/>
     <rule ref="Generic.PHP.NoSilencedErrors"/>
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="manage_woocommerce"/>
+            </property>
+        </properties>
+    </rule>
     
     <arg value="ps"/>
     <arg name="colors"/>
     <arg name="extensions" value="php"/>
-    <arg name="parallel" value="100"/>
 
     <!-- Exclude the node_modules directory. -->
     <exclude-pattern>/node_modules/*</exclude-pattern>

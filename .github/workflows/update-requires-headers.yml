@@ -7,7 +7,7 @@ on:
 
 env:
   PLUGIN_FILE_NAME: "woocommerce-shipping-dhl.php"
-  MAIN_BRANCH: "trunk"
+  MAIN_BRANCH: "main"
 
 jobs:
   update-headers:

@@ -38,14 +38,23 @@ class Address_Validator extends Abstract_Address_Validator {
 	private string $environment = 'test';
 
 	/**
+	 * Whether debug mode is enabled for the caller.
+	 *
+	 * @var bool
+	 */
+	private bool $debug_mode = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array  $address      Address to validate.
 	 * @param string $access_token Access token for authentication.
 	 * @param string $environment  API environment (test|production).
+	 * @param bool   $debug_mode   Whether debug mode is enabled.
 	 */
-	public function __construct( array $address, string $access_token, string $environment = 'test' ) {
+	public function __construct( array $address, string $access_token, string $environment = 'test', bool $debug_mode = false ) {
 		$this->environment = in_array( $environment, array( 'test', 'production' ), true ) ? $environment : 'test';
+		$this->debug_mode  = $debug_mode;
 
 		parent::__construct( $address, $access_token );
 	}
@@ -83,7 +92,16 @@ class Address_Validator extends Abstract_Address_Validator {
 	public function validate() {
 		$logger = new Logger();
 
-		$endpoint = self::$endpoints[ $this->environment ] ?? self::$endpoints['test'];
+		$endpoint  = self::$endpoints[ $this->environment ] ?? self::$endpoints['test'];
+		$cache_key = $this->get_cache_key();
+
+		if ( ! $this->debug_mode ) {
+			$cached_response = get_transient( $cache_key );
+			if ( false !== $cached_response && is_array( $cached_response ) ) {
+				$this->response = $cached_response;
+				return true;
+			}
+		}
 
 		// Create the request headers.
 		$headers = array(
@@ -124,6 +142,10 @@ class Address_Validator extends Abstract_Address_Validator {
 		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $this->response ) ) {
 			$this->response = new WP_Error( 'dhl_address_validation_parse_error', __( 'Could not parse DHL address validation response.', 'woocommerce-shipping-dhl' ) );
 			return false;
+		}
+
+		if ( ! $this->debug_mode ) {
+			set_transient( $cache_key, $this->response, 6 * HOUR_IN_SECONDS );
 		}
 
 		return true;
@@ -179,5 +201,21 @@ class Address_Validator extends Abstract_Address_Validator {
 		$normalized_value = strtolower( trim( (string) $value ) );
 
 		return in_array( $normalized_value, array( '1', 'true', 'y', 'yes' ), true );
+	}
+
+	/**
+	 * Build a cache key for this validation lookup.
+	 *
+	 * @return string
+	 */
+	private function get_cache_key(): string {
+		return 'wc_dhl_address_validate_' . md5(
+			wp_json_encode(
+				array(
+					'environment' => $this->environment,
+					'request'     => $this->request,
+				)
+			)
+		);
 	}
 }

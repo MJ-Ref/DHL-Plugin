@@ -12,6 +12,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 $services         = $this->get_dhl_services();
 $enabled_services = $this->get_enabled_service_codes();
 
+if ( ! is_array( $services ) ) {
+	$services = array();
+}
+
+if ( ! is_array( $enabled_services ) ) {
+	$enabled_services = array();
+}
+
 ?>
 <tr valign="top">
 	<th scope="row" class="titledesc">

@@ -8,6 +8,14 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+if ( ! is_array( $services ) ) {
+	$services = array();
+}
+
+if ( ! is_array( $custom_services ) ) {
+	$custom_services = array();
+}
 ?>
 <tr valign="top">
 	<th scope="row" class="titledesc">
@@ -29,10 +37,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<tbody>
 					<?php
 					foreach ( $services as $code => $name ) :
-						$enabled            = isset( $custom_services[ $code ]['enabled'] ) ? 1 === $custom_services[ $code ]['enabled'] : false;
-						$custom_name        = isset( $custom_services[ $code ]['name'] ) ? $custom_services[ $code ]['name'] : $name;
-						$adjustment_percent = isset( $custom_services[ $code ]['adjustment_percent'] ) ? $custom_services[ $code ]['adjustment_percent'] : '';
-						$adjustment         = isset( $custom_services[ $code ]['adjustment'] ) ? $custom_services[ $code ]['adjustment'] : '';
+						$service_settings   = isset( $custom_services[ $code ] ) && is_array( $custom_services[ $code ] ) ? $custom_services[ $code ] : array();
+						$enabled            = ! empty( $service_settings['enabled'] );
+						$custom_name        = isset( $service_settings['name'] ) ? $service_settings['name'] : $name;
+						$adjustment_percent = isset( $service_settings['adjustment_percent'] ) ? $service_settings['adjustment_percent'] : '';
+						$adjustment         = isset( $service_settings['adjustment'] ) ? $service_settings['adjustment'] : '';
 						?>
 						<tr>
 							<td>

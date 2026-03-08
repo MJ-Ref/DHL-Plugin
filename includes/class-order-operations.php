@@ -82,6 +82,7 @@ class Order_Operations {
 		add_action( 'init', array( $this, 'maybe_schedule_tracking_sync' ) );
 		add_action( self::TRACKING_SYNC_HOOK, array( $this, 'run_scheduled_tracking_sync' ) );
 		add_action( 'admin_post_' . self::DOCUMENT_DOWNLOAD_ACTION, array( $this, 'download_document' ) );
+		add_action( 'woocommerce_dhl_settings_saved', array( $this, 'maybe_schedule_tracking_sync' ) );
 
 		if ( is_admin() ) {
 			add_filter( 'woocommerce_order_actions', array( $this, 'add_order_actions' ) );
@@ -318,12 +319,16 @@ class Order_Operations {
 			return $actions;
 		}
 
+		$shipping_method = $this->get_order_shipping_method_instance( $order );
+		if ( ! $shipping_method instanceof WC_Shipping_DHL || $shipping_method->get_configuration_error() ) {
+			return $actions;
+		}
+
 		$actions['wc_dhl_create_shipment_label']   = __( 'DHL: Create Shipment & Label', 'woocommerce-shipping-dhl' );
 		$actions['wc_dhl_book_pickup']             = __( 'DHL: Book Pickup', 'woocommerce-shipping-dhl' );
 		$actions['wc_dhl_refresh_tracking']        = __( 'DHL: Refresh Tracking', 'woocommerce-shipping-dhl' );
 		$actions['wc_dhl_fetch_proof_of_delivery'] = __( 'DHL: Fetch Proof of Delivery', 'woocommerce-shipping-dhl' );
 
-		$shipping_method = $this->get_order_shipping_method_instance( $order );
 		if ( $shipping_method instanceof WC_Shipping_DHL && $shipping_method->is_service_point_lookup_enabled() ) {
 			$actions['wc_dhl_refresh_service_points'] = __( 'DHL: Refresh Service Points', 'woocommerce-shipping-dhl' );
 		}
@@ -591,6 +596,8 @@ class Order_Operations {
 			return;
 		}
 
+		$shipping_method = $this->get_order_shipping_method_instance( $order );
+
 		$tracking_number = (string) $order->get_meta( self::META_TRACKING_NUMBER, true );
 		$tracking_url    = (string) $order->get_meta( self::META_TRACKING_URL, true );
 		$label_url       = $this->get_document_download_url( $order, 'label' );
@@ -602,6 +609,13 @@ class Order_Operations {
 
 		echo '<div class="wc-dhl-order-shipment">';
 		echo '<p><strong>' . esc_html__( 'DHL Shipment', 'woocommerce-shipping-dhl' ) . '</strong></p>';
+
+		if ( $shipping_method instanceof WC_Shipping_DHL ) {
+			$config_error = $shipping_method->get_configuration_error();
+			if ( $config_error ) {
+				echo '<p><em>' . esc_html( $config_error->get_error_message() ) . '</em></p>';
+			}
+		}
 
 		if ( '' !== $tracking_number ) {
 			echo '<p>' . esc_html__( 'Tracking Number:', 'woocommerce-shipping-dhl' ) . ' ' . esc_html( $tracking_number ) . '</p>';
@@ -717,7 +731,7 @@ class Order_Operations {
 			header( 'Content-Length: ' . (string) $file_size );
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile -- Streaming a local file after auth checks.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- Streaming a local file after auth checks.
 		readfile( $file_path );
 		exit;
 	}
@@ -994,12 +1008,9 @@ class Order_Operations {
 			return new WP_Error( 'wc_dhl_shipping_method_missing', __( 'Could not load DHL shipping settings for this order.', 'woocommerce-shipping-dhl' ) );
 		}
 
-		$api_user       = (string) $shipping_method->get_option( 'api_user' );
-		$api_key        = (string) $shipping_method->get_option( 'api_key' );
-		$shipper_number = (string) $shipping_method->get_shipper_number();
-
-		if ( '' === $api_user || '' === $api_key || '' === $shipper_number ) {
-			return new WP_Error( 'wc_dhl_credentials_missing', __( 'DHL credentials or shipper number are missing in shipping settings.', 'woocommerce-shipping-dhl' ) );
+		$config_error = $shipping_method->get_configuration_error();
+		if ( $config_error instanceof WP_Error ) {
+			return $config_error;
 		}
 
 		return new Shipment_Client( $shipping_method );

@@ -17,6 +17,7 @@ use WooCommerce\DHL\API\REST\OAuth as REST_API_OAuth;
 use WooCommerce\DHL\API\REST\API_Client as REST_API_Client;
 use WooCommerce\BoxPacker\Abstract_Packer;
 use WooCommerce\BoxPacker\WC_Boxpack;
+use WP_Error;
 
 /**
  * WC_Shipping_DHL class.
@@ -284,7 +285,28 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$this->init_form_fields();
 		$this->init_settings();
 
-		// Define user set variables.
+		$this->load_settings_from_options();
+
+		// Register actions.
+		add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'handle_settings_update' ) );
+		add_action( 'admin_notices', array( Notifier::class, 'output_notices' ) );
+	}
+
+	/**
+	 * Handle WooCommerce settings-save hook without returning a value to the action system.
+	 *
+	 * @return void
+	 */
+	public function handle_settings_update(): void {
+		$this->process_admin_options();
+	}
+
+	/**
+	 * Load normalized instance settings into runtime properties.
+	 *
+	 * @return void
+	 */
+	private function load_settings_from_options(): void {
 		$this->title                           = $this->get_option( 'title' );
 		$this->environment                     = $this->get_option( 'environment', 'test' );
 		$this->api_user                        = $this->get_option( 'api_user' );
@@ -296,9 +318,9 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$this->weight_unit                     = $this->get_option( 'weight_unit' );
 		$this->units                           = 'KG' === $this->weight_unit ? 'metric' : 'imperial';
 		$this->packing_method                  = $this->get_option( 'packing_method', 'per_item' );
-		$this->boxes                           = $this->get_option( 'boxes', array() );
-		$this->services                        = $this->get_option( 'services', array() );
-		$this->custom_services                 = $this->get_option( 'custom_services', array() );
+		$this->boxes                           = $this->normalize_boxes( $this->get_option( 'boxes', array() ) );
+		$this->services                        = $this->normalize_enabled_services( $this->get_option( 'services', array() ) );
+		$this->custom_services                 = $this->normalize_custom_services( $this->get_option( 'custom_services', array() ) );
 		$this->offer_rates                     = $this->get_option( 'offer_rates', 'all' );
 		$this->fallback                        = $this->get_option( 'fallback' );
 		$this->residential                     = 'yes' === $this->get_option( 'residential' );
@@ -307,15 +329,11 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		$this->landed_cost_estimate            = 'yes' === $this->get_option( 'landed_cost_estimate' );
 		$this->tracking_sync                   = 'yes' === $this->get_option( 'tracking_sync' );
 		$this->tracking_customer_notifications = 'yes' === $this->get_option( 'tracking_customer_notifications' );
-		$this->origin_addressline              = $this->get_option( 'origin_addressline', '' );
-		$this->origin_city                     = $this->get_option( 'origin_city', '' );
-		$this->origin_state                    = $this->get_option( 'origin_state', '' );
-		$this->origin_country                  = $this->get_option( 'origin_country', WC()->countries->get_base_country() );
-		$this->origin_postcode                 = $this->get_option( 'origin_postcode', '' );
-
-		// Register actions.
-		add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'process_admin_options' ) );
-		add_action( 'admin_notices', array( Notifier::class, 'output_notices' ) );
+		$this->origin_addressline              = $this->clean_string( (string) $this->get_option( 'origin_addressline', '' ) );
+		$this->origin_city                     = $this->clean_string( (string) $this->get_option( 'origin_city', '' ) );
+		$this->origin_state                    = $this->clean_string( (string) $this->get_option( 'origin_state', '' ) );
+		$this->origin_country                  = (string) $this->get_option( 'origin_country', WC()->countries->get_base_country() );
+		$this->origin_postcode                 = $this->clean_string( (string) $this->get_option( 'origin_postcode', '' ) );
 	}
 
 	/**
@@ -344,6 +362,10 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'description' => __( 'This controls the title which the user sees during checkout.', 'woocommerce-shipping-dhl' ),
 				'default'     => __( 'DHL Express', 'woocommerce-shipping-dhl' ),
 				'desc_tip'    => true,
+			),
+			'configuration_status'            => array(
+				'title' => __( 'Configuration Status', 'woocommerce-shipping-dhl' ),
+				'type'  => 'configuration_status',
 			),
 			'api_section'                     => array(
 				'title'       => __( 'API Settings', 'woocommerce-shipping-dhl' ),
@@ -493,9 +515,9 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'type' => 'services_table',
 			),
 			'options_section'                 => array(
-				'title'       => __( 'Additional Options', 'woocommerce-shipping-dhl' ),
+				'title'       => __( 'Checkout Options', 'woocommerce-shipping-dhl' ),
 				'type'        => 'title',
-				'description' => __( 'Configure additional shipping options.', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Configure checkout-time DHL rating behavior.', 'woocommerce-shipping-dhl' ),
 			),
 			'residential'                     => array(
 				'title'       => __( 'Residential Address', 'woocommerce-shipping-dhl' ),
@@ -531,11 +553,16 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'default'     => '',
 				'desc_tip'    => true,
 			),
+			'operations_section'              => array(
+				'title'       => __( 'Shipment Tools', 'woocommerce-shipping-dhl' ),
+				'type'        => 'title',
+				'description' => __( 'These settings enable optional DHL order operations. They require valid credentials and origin details.', 'woocommerce-shipping-dhl' ),
+			),
 			'service_point_lookup'            => array(
 				'title'       => __( 'Service Points', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable service point lookup tools on DHL orders', 'woocommerce-shipping-dhl' ),
-				'description' => __( 'Adds order actions to retrieve nearby DHL service points for the destination.', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Adds order actions to retrieve nearby DHL service points for the destination. Requires a fully configured DHL instance.', 'woocommerce-shipping-dhl' ),
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
@@ -543,7 +570,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 				'title'       => __( 'Landed Cost', 'woocommerce-shipping-dhl' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable landed cost estimate tools on DHL orders', 'woocommerce-shipping-dhl' ),
-				'description' => __( 'Adds order actions to calculate duties and tax estimates using DHL landed-cost API.', 'woocommerce-shipping-dhl' ),
+				'description' => __( 'Adds order actions to calculate duties and tax estimates using DHL landed-cost API. Product commodity codes should also be maintained.', 'woocommerce-shipping-dhl' ),
 				'default'     => 'no',
 				'desc_tip'    => true,
 			),
@@ -570,13 +597,40 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	}
 
 	/**
+	 * Persist instance settings and refresh runtime configuration.
+	 *
+	 * @return bool
+	 */
+	public function process_admin_options() {
+		$saved = parent::process_admin_options();
+
+		if ( ! $saved ) {
+			return false;
+		}
+
+		$this->init_settings();
+		$this->load_settings_from_options();
+
+		/**
+		 * Fires after DHL shipping method settings are saved.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param WC_Shipping_DHL $shipping_method Current shipping method instance.
+		 */
+		do_action( 'woocommerce_dhl_settings_saved', $this );
+
+		return $saved;
+	}
+
+	/**
 	 * Generate boxes HTML.
 	 *
 	 * @return string
 	 */
 	public function generate_boxes_html() {
 		ob_start();
-		include dirname( __FILE__ ) . '/views/html-box-packing.php';
+		include __DIR__ . '/views/html-box-packing.php';
 		return ob_get_clean();
 	}
 
@@ -587,7 +641,7 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function generate_services_html() {
 		ob_start();
-		include dirname( __FILE__ ) . '/views/html-services.php';
+		include __DIR__ . '/views/html-services.php';
 		return ob_get_clean();
 	}
 
@@ -600,7 +654,45 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 		ob_start();
 		$services        = $this->get_dhl_services();
 		$custom_services = $this->get_custom_services();
-		include dirname( __FILE__ ) . '/views/html-services-table.php';
+		include __DIR__ . '/views/html-services-table.php';
+		return ob_get_clean();
+	}
+
+	/**
+	 * Generate configuration status HTML.
+	 *
+	 * @return string
+	 */
+	public function generate_configuration_status_html() {
+		$missing_fields = $this->get_missing_configuration_fields();
+		$is_ready       = empty( $missing_fields );
+
+		ob_start();
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<?php esc_html_e( 'Configuration Status', 'woocommerce-shipping-dhl' ); ?>
+			</th>
+			<td class="forminp">
+				<div class="notice inline <?php echo $is_ready ? 'notice-success' : 'notice-warning'; ?>">
+					<p>
+						<?php
+						if ( $is_ready ) {
+							esc_html_e( 'This DHL method is configured for live rating and order operations.', 'woocommerce-shipping-dhl' );
+						} else {
+							printf(
+								/* translators: %s: comma-separated required fields. */
+								esc_html__( 'This DHL method is incomplete. Add the missing fields before running live rates or order actions: %s.', 'woocommerce-shipping-dhl' ),
+								esc_html( implode( ', ', $missing_fields ) )
+							);
+						}
+						?>
+					</p>
+				</div>
+			</td>
+		</tr>
+		<?php
+
 		return ob_get_clean();
 	}
 
@@ -611,6 +703,12 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 * @return void
 	 */
 	public function calculate_shipping( $package = array() ) {
+		$config_error = $this->get_configuration_error();
+		if ( $config_error instanceof WP_Error ) {
+			$this->logger->warning( $config_error->get_error_message() );
+			return;
+		}
+
 		// Check if the destination address is valid.
 		if ( $this->destination_address_validation ) {
 			$this->validate_destination_address( $package['destination'] );
@@ -1028,39 +1126,106 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 			return;
 		}
 
+		$log_entry = array();
+
 		if ( is_array( $message ) || is_object( $message ) ) {
-			$encoded_message = wp_json_encode( $message );
-			$message         = false !== $encoded_message ? $encoded_message : __( 'Unable to encode debug message.', 'woocommerce-shipping-dhl' );
+			$log_entry['message'] = $this->redact_debug_data( $message );
+			$message              = __( 'Structured DHL debug event.', 'woocommerce-shipping-dhl' );
+		} else {
+			$log_entry['message'] = (string) $message;
 		}
 
 		if ( ! empty( $data ) ) {
-			$encoded_data = wp_json_encode( $data );
-			$message     .= ' | ' . ( false !== $encoded_data ? $encoded_data : __( 'Unable to encode debug payload.', 'woocommerce-shipping-dhl' ) );
+			$log_entry['context'] = $this->redact_debug_data( $data );
 		}
 
 		switch ( $type ) {
 			case 'error':
-				$this->logger->error( $message );
+				$this->logger->error( $log_entry );
 
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'error', $group );
 				}
 				break;
 			case 'warning':
-				$this->logger->warning( $message );
+				$this->logger->warning( $log_entry );
 
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'warning', $group );
 				}
 				break;
 			default:
-				$this->logger->info( $message );
+				$this->logger->info( $log_entry );
 
 				if ( ! empty( $group ) ) {
 					Notifier::add_notice( $message, 'info', $group );
 				}
 				break;
 		}
+	}
+
+	/**
+	 * Redact sensitive data before logging or exposing debug payloads.
+	 *
+	 * @param mixed $value Raw debug payload.
+	 * @return mixed
+	 */
+	private function redact_debug_data( $value ) {
+		$sensitive_keys = array(
+			'authorization',
+			'api_key',
+			'apikey',
+			'password',
+			'pass',
+			'token',
+			'access_token',
+			'shipper_number',
+			'shippernumber',
+			'accountnumber',
+			'customerauthorization',
+			'signatureimage',
+		);
+
+		if ( is_array( $value ) ) {
+			$redacted = array();
+
+			foreach ( $value as $key => $item ) {
+				$normalized_key = is_string( $key ) ? strtolower( preg_replace( '/[^a-z0-9]/i', '', $key ) ) : '';
+
+				if ( '' !== $normalized_key && in_array( $normalized_key, $sensitive_keys, true ) ) {
+					$redacted[ $key ] = $this->mask_sensitive_string( (string) $item );
+					continue;
+				}
+
+				$redacted[ $key ] = $this->redact_debug_data( $item );
+			}
+
+			return $redacted;
+		}
+
+		if ( is_object( $value ) ) {
+			$object_vars = get_object_vars( $value );
+
+			return empty( $object_vars ) ? $value : $this->redact_debug_data( $object_vars );
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Mask a sensitive string while keeping enough shape for debugging.
+	 *
+	 * @param string $value Raw value.
+	 * @return string
+	 */
+	private function mask_sensitive_string( string $value ): string {
+		$length = strlen( $value );
+
+		if ( $length <= 4 ) {
+			return str_repeat( '*', max( 4, $length ) );
+		}
+
+		return substr( $value, 0, 2 ) . str_repeat( '*', max( 4, $length - 4 ) ) . substr( $value, -2 );
 	}
 
 	/**
@@ -1113,6 +1278,262 @@ class WC_Shipping_DHL extends WC_Shipping_Method {
 	 */
 	public function get_custom_services() {
 		return empty( $this->custom_services ) ? array() : $this->custom_services;
+	}
+
+	/**
+	 * Get missing required configuration labels for this DHL instance.
+	 *
+	 * @return string[]
+	 */
+	public function get_missing_configuration_fields(): array {
+		$required_fields = array(
+			'api_user'           => __( 'API User', 'woocommerce-shipping-dhl' ),
+			'api_key'            => __( 'API Key', 'woocommerce-shipping-dhl' ),
+			'shipper_number'     => __( 'Shipper Number', 'woocommerce-shipping-dhl' ),
+			'origin_addressline' => __( 'Origin Address Line', 'woocommerce-shipping-dhl' ),
+			'origin_city'        => __( 'Origin City', 'woocommerce-shipping-dhl' ),
+			'origin_country'     => __( 'Origin Country', 'woocommerce-shipping-dhl' ),
+			'origin_postcode'    => __( 'Origin Postcode', 'woocommerce-shipping-dhl' ),
+		);
+
+		if ( $this->origin_country_requires_state() ) {
+			$required_fields['origin_state'] = __( 'Origin State / Province', 'woocommerce-shipping-dhl' );
+		}
+
+		$missing_fields = array();
+		foreach ( $required_fields as $field_key => $label ) {
+			$value = '';
+
+			switch ( $field_key ) {
+				case 'api_user':
+					$value = (string) $this->api_user;
+					break;
+				case 'api_key':
+					$value = (string) $this->api_key;
+					break;
+				case 'shipper_number':
+					$value = (string) $this->shipper_number;
+					break;
+				case 'origin_addressline':
+					$value = $this->origin_addressline;
+					break;
+				case 'origin_city':
+					$value = $this->origin_city;
+					break;
+				case 'origin_state':
+					$value = $this->origin_state;
+					break;
+				case 'origin_country':
+					$value = $this->origin_country;
+					break;
+				case 'origin_postcode':
+					$value = $this->origin_postcode;
+					break;
+			}
+
+			if ( '' === trim( $value ) ) {
+				$missing_fields[] = $label;
+			}
+		}
+
+		return $missing_fields;
+	}
+
+	/**
+	 * Build a configuration error when this instance is incomplete.
+	 *
+	 * @return WP_Error|null
+	 */
+	public function get_configuration_error(): ?WP_Error {
+		$missing_fields = $this->get_missing_configuration_fields();
+
+		if ( empty( $missing_fields ) ) {
+			return null;
+		}
+
+		return new WP_Error(
+			'wc_dhl_configuration_incomplete',
+			sprintf(
+				/* translators: %s: comma-separated missing configuration labels. */
+				__( 'DHL shipping settings are incomplete. Missing: %s.', 'woocommerce-shipping-dhl' ),
+				implode( ', ', $missing_fields )
+			)
+		);
+	}
+
+	/**
+	 * Get the admin URL for this shipping method instance.
+	 *
+	 * @return string
+	 */
+	public function get_settings_url(): string {
+		if ( $this->instance_id > 0 ) {
+			return (string) admin_url( 'admin.php?page=wc-settings&tab=shipping&instance_id=' . absint( $this->instance_id ) );
+		}
+
+		return (string) admin_url( 'admin.php?page=wc-settings&tab=shipping&section=dhl_settings' );
+	}
+
+	/**
+	 * Validate the custom box settings field.
+	 *
+	 * @param string $key   Setting key.
+	 * @param mixed  $value Posted value.
+	 * @return array
+	 */
+	public function validate_boxes_field( $key, $value ) {
+		return $this->normalize_boxes( $value );
+	}
+
+	/**
+	 * Validate the enabled-services checkbox field.
+	 *
+	 * @param string $key   Setting key.
+	 * @param mixed  $value Posted value.
+	 * @return array
+	 */
+	public function validate_services_field( $key, $value ) {
+		return $this->normalize_enabled_services( $value );
+	}
+
+	/**
+	 * Validate the custom service-settings table field.
+	 *
+	 * @param string $key   Setting key.
+	 * @param mixed  $value Posted value.
+	 * @return array
+	 */
+	public function validate_services_table_field( $key, $value ) {
+		return $this->normalize_custom_services( $value );
+	}
+
+	/**
+	 * Validate the read-only configuration status field.
+	 *
+	 * @param string $key   Setting key.
+	 * @param mixed  $value Posted value.
+	 * @return string
+	 */
+	public function validate_configuration_status_field( $key, $value ) {
+		return '';
+	}
+
+	/**
+	 * Normalize custom box settings into a safe persistent shape.
+	 *
+	 * @param mixed $boxes Raw box data.
+	 * @return array
+	 */
+	private function normalize_boxes( $boxes ): array {
+		if ( ! is_array( $boxes ) ) {
+			return array();
+		}
+
+		$normalized_boxes = array();
+
+		foreach ( $boxes as $box_key => $box ) {
+			if ( 'template' === (string) $box_key || ! is_array( $box ) ) {
+				continue;
+			}
+
+			$name       = $this->clean_string( (string) ( $box['name'] ?? '' ) );
+			$length     = wc_format_decimal( $box['length'] ?? '' );
+			$width      = wc_format_decimal( $box['width'] ?? '' );
+			$height     = wc_format_decimal( $box['height'] ?? '' );
+			$box_weight = wc_format_decimal( $box['box_weight'] ?? '' );
+			$max_weight = wc_format_decimal( $box['max_weight'] ?? '' );
+			$enabled    = empty( $box['enabled'] ) ? '' : '1';
+
+			if ( '' === $name && '' === (string) $length && '' === (string) $width && '' === (string) $height && '' === (string) $box_weight && '' === (string) $max_weight ) {
+				continue;
+			}
+
+			$normalized_boxes[] = array(
+				'id'         => sanitize_key( (string) ( $box['id'] ?? $box_key ) ),
+				'name'       => $name,
+				'length'     => '' === (string) $length ? '' : (string) $length,
+				'width'      => '' === (string) $width ? '' : (string) $width,
+				'height'     => '' === (string) $height ? '' : (string) $height,
+				'box_weight' => '' === (string) $box_weight ? '' : (string) $box_weight,
+				'max_weight' => '' === (string) $max_weight ? '' : (string) $max_weight,
+				'enabled'    => $enabled,
+			);
+		}
+
+		return $normalized_boxes;
+	}
+
+	/**
+	 * Normalize enabled DHL service codes.
+	 *
+	 * @param mixed $services Raw services payload.
+	 * @return array
+	 */
+	private function normalize_enabled_services( $services ): array {
+		if ( ! is_array( $services ) ) {
+			return array();
+		}
+
+		$allowed_codes = array_map( 'strval', array_keys( $this->get_dhl_services() ) );
+		$normalized    = array();
+
+		foreach ( $services as $service_code ) {
+			$service_code = (string) $service_code;
+			if ( in_array( $service_code, $allowed_codes, true ) ) {
+				$normalized[] = $service_code;
+			}
+		}
+
+		return array_values( array_unique( $normalized ) );
+	}
+
+	/**
+	 * Normalize custom service table settings.
+	 *
+	 * @param mixed $custom_services Raw service table payload.
+	 * @return array
+	 */
+	private function normalize_custom_services( $custom_services ): array {
+		if ( ! is_array( $custom_services ) ) {
+			return array();
+		}
+
+		$services           = $this->get_dhl_services();
+		$normalized_service = array();
+
+		foreach ( $services as $code => $default_name ) {
+			if ( empty( $custom_services[ $code ] ) || ! is_array( $custom_services[ $code ] ) ) {
+				continue;
+			}
+
+			$settings = $custom_services[ $code ];
+
+			$normalized_service[ $code ] = array(
+				'code'               => (string) $code,
+				'name'               => $this->clean_string( (string) ( $settings['name'] ?? $default_name ) ),
+				'adjustment_percent' => (string) wc_format_decimal( $settings['adjustment_percent'] ?? '' ),
+				'adjustment'         => (string) wc_format_decimal( $settings['adjustment'] ?? '' ),
+				'enabled'            => empty( $settings['enabled'] ) ? '0' : '1',
+			);
+		}
+
+		return $normalized_service;
+	}
+
+	/**
+	 * Determine whether the configured origin country requires a state/province.
+	 *
+	 * @return bool
+	 */
+	private function origin_country_requires_state(): bool {
+		$country = '' !== $this->origin_country ? $this->origin_country : (string) $this->get_option( 'origin_country', '' );
+		if ( '' === $country || ! WC()->countries ) {
+			return false;
+		}
+
+		$states = WC()->countries->get_states( $country );
+
+		return is_array( $states ) && ! empty( $states );
 	}
 
 	/**

@@ -10,8 +10,12 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^9.0",
-        "woocommerce/woocommerce-sniffs": "^0.1.0",
-        "yoast/phpunit-polyfills": "^3.0"
+        "woocommerce/woocommerce-sniffs": "^1.0.1",
+        "yoast/phpunit-polyfills": "^3.0",
+        "phpstan/phpstan": "^2.1",
+        "php-stubs/wordpress-stubs": "^6.6",
+        "php-stubs/woocommerce-stubs": "^9.5",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     },
     "config": {
         "allow-plugins": {
@@ -26,10 +30,13 @@
     },
     "scripts": {
         "phpcs": [
-            "phpcs --standard=phpcs.xml.dist"
+            "phpcs -d memory_limit=1G --extensions=php --standard=phpcs.xml.dist includes woocommerce-shipping-dhl.php bin"
         ],
         "phpcbf": [
-            "phpcbf --standard=phpcs.xml.dist"
+            "phpcbf -d memory_limit=1G --extensions=php --standard=phpcs.xml.dist includes woocommerce-shipping-dhl.php bin"
+        ],
+        "phpstan": [
+            "phpstan analyse --memory-limit=1G --configuration=phpstan.neon.dist"
         ],
         "test": [
             "phpunit"

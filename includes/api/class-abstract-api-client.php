@@ -247,10 +247,9 @@ abstract class Abstract_API_Client {
 	/**
 	 * Check if a package is eligible for specific services.
 	 *
-	 * @param int $total_packages_count The total number of packages.
 	 * @return bool
 	 */
-	public function is_package_eligible_for_service( $total_packages_count ) {
+	public function is_package_eligible_for_service() {
 		// Example check for domestic service eligibility.
 		if ( $this->shipping_method->is_domestic_destination( $this->package['destination']['country'] ) ) {
 			return true;

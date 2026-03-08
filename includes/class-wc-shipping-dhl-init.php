@@ -53,6 +53,7 @@ class WC_Shipping_DHL_Init {
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-logger.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-notifier.php';
+		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-install.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-dhl-privacy.php';
 		require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-order-operations.php';
 
@@ -60,6 +61,7 @@ class WC_Shipping_DHL_Init {
 		if ( is_admin() ) {
 			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-wc-shipping-dhl-admin.php';
 			require_once WC_SHIPPING_DHL_PLUGIN_DIR . '/includes/class-product-editor.php';
+			new Install();
 			new WC_Shipping_DHL_Admin();
 			new Product_Editor();
 		}
@@ -148,28 +150,6 @@ class WC_Shipping_DHL_Init {
 	 */
 	public function load_textdomain() {
 		load_plugin_textdomain( 'woocommerce-shipping-dhl', false, dirname( plugin_basename( WC_SHIPPING_DHL_PLUGIN_DIR . '/woocommerce-shipping-dhl.php' ) ) . '/languages/' );
-	}
-
-	/**
-	 * Enqueue admin scripts.
-	 */
-	public function admin_scripts() {
-		$screen = get_current_screen();
-
-		// Only on shipping settings page.
-		if ( ! $screen || 'woocommerce_page_wc-settings' !== $screen->id ) {
-			return;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Used only to scope assets on the settings screen.
-		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : '';
-
-		if ( 'dhl' !== $section ) {
-			return;
-		}
-
-		wp_enqueue_style( 'wc-dhl-admin-styles', WC_SHIPPING_DHL_PLUGIN_URL . '/assets/css/dhl-admin.css', array(), WC_SHIPPING_DHL_VERSION );
-		wp_enqueue_script( 'wc-dhl-admin-script', WC_SHIPPING_DHL_PLUGIN_URL . '/assets/js/dhl-admin.js', array( 'jquery' ), WC_SHIPPING_DHL_VERSION, true );
 	}
 
 	/**

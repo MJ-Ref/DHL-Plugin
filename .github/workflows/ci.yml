@@ -3,9 +3,9 @@ name: CI
 on:
   workflow_call:
   push:
-    branches: [ main, trunk, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, trunk, develop ]
+    branches: [ main ]
 
 jobs:
   php-lint:
@@ -101,6 +101,26 @@ jobs:
       - name: Run JS linting
         run: npm run lint:js
 
+  phpstan:
+    name: PHPStan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-progress --no-interaction
+
+      - name: Run PHPStan
+        run: composer run-script phpstan
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -119,7 +139,7 @@ jobs:
         run: composer install --no-progress --no-interaction
 
       - name: Run PHPCS security scan
-        run: vendor/bin/phpcs --standard=.phpcs.security.xml
+        run: vendor/bin/phpcs --extensions=php --standard=.phpcs.security.xml includes woocommerce-shipping-dhl.php bin
 
   package-artifact:
     name: Package plugin artifact (main only)
@@ -128,6 +148,7 @@ jobs:
       - php-lint
       - phpunit
       - js-lint
+      - phpstan
       - security-scan
     uses: ./.github/workflows/build.yml
     with:

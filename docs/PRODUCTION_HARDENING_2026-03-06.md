@@ -1,5 +1,7 @@
 # DHL Live Rates Production Hardening Report (2026-03-06)
 
+Historical note: this document records the hardening pass completed on March 6, 2026. For the current go/no-go state, use `docs/STATUS.md` and `docs/LIVE_DHL_UAT_2026-03-07.md`.
+
 ## Scope
 
 This pass addressed the production-readiness gaps found during the March 2026 review:

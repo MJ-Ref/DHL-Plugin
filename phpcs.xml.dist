@@ -8,7 +8,9 @@
 	<config name="testVersion" value="7.4-"/>
 	<config name="minimum_wp_version" value="6.6"/>
 
-	<file>.</file>
+	<file>includes</file>
+	<file>woocommerce-shipping-dhl.php</file>
+	<file>bin</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
@@ -42,5 +44,12 @@
 		<exclude name="WordPress.WP.I18n"/>
 		<exclude name="WordPress.WP.DeprecatedParameterValues"/>
 		<exclude name="WordPress.WP.AlternativeFunctions"/>
+	</rule>
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="manage_woocommerce"/>
+			</property>
+		</properties>
 	</rule>
 </ruleset>

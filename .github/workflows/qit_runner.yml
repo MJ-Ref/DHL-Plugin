@@ -1,0 +1,170 @@
+name: Run QIT
+
+on:
+  workflow_call:
+    inputs:
+      extension:
+        required: true
+        type: string
+      artifact:
+        required: true
+        type: string
+      wp-version:
+        required: false
+        type: string
+        default: stable
+      wc-version:
+        required: false
+        type: string
+        default: stable
+      php-version:
+        required: false
+        type: string
+        default: '8.1'
+      test-activation:
+        required: false
+        type: string
+        default: 'true'
+      test-security:
+        required: false
+        type: string
+        default: 'false'
+      test-phpcompatibility:
+        required: false
+        type: string
+        default: 'true'
+      test-phpstan:
+        required: false
+        type: string
+        default: 'true'
+      test-plugin-check:
+        required: false
+        type: string
+        default: 'true'
+      options:
+        required: false
+        type: string
+        default: ''
+      wait:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      PARTNER_USER:
+        required: true
+      PARTNER_SECRET:
+        required: true
+
+env:
+  NO_COLOR: 1
+  QIT_DISABLE_ONBOARDING: yes
+  EXTENSION_SLUG: ${{ inputs.extension }}
+  WP_VERSION: ${{ inputs.wp-version }}
+  WC_VERSION: ${{ inputs.wc-version }}
+  PHP_VERSION: ${{ inputs.php-version }}
+  WAIT_FLAG: ${{ inputs.wait && '--wait' || '' }}
+  EXTRA_OPTIONS: ${{ inputs.options }}
+
+jobs:
+  qit-tests:
+    name: Run QIT Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install QIT CLI
+        run: composer global require woocommerce/qit-cli --no-interaction --no-progress
+
+      - name: Add QIT partner credentials
+        run: |
+          ~/.composer/vendor/bin/qit partner:add \
+            --user='${{ secrets.PARTNER_USER }}' \
+            --qit_token='${{ secrets.PARTNER_SECRET }}'
+
+      - name: Prepare result directory
+        run: mkdir -p "${{ github.workspace }}/qit-results"
+
+      - name: Download packaged plugin
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ github.workspace }}
+
+      - name: Export ZIP path
+        run: echo "ZIP_FILE_PATH=${{ github.workspace }}/${{ inputs.extension }}.zip" >> "$GITHUB_ENV"
+
+      - name: Run activation test
+        if: ${{ inputs.test-activation == 'true' }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          ~/.composer/vendor/bin/qit run:activation \
+            "${{ env.EXTENSION_SLUG }}" \
+            --zip="${{ env.ZIP_FILE_PATH }}" \
+            --wp="${{ env.WP_VERSION }}" \
+            --woo="${{ env.WC_VERSION }}" \
+            --php_version="${{ env.PHP_VERSION }}" \
+            ${{ env.EXTRA_OPTIONS }} \
+            -n \
+            > "${{ github.workspace }}/qit-results/activation.txt"
+
+      - name: Run PHP compatibility test
+        if: ${{ inputs.test-phpcompatibility == 'true' }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          ~/.composer/vendor/bin/qit run:phpcompatibility \
+            "${{ env.EXTENSION_SLUG }}" \
+            --zip="${{ env.ZIP_FILE_PATH }}" \
+            ${{ env.WAIT_FLAG }} \
+            ${{ env.EXTRA_OPTIONS }} \
+            -n \
+            > "${{ github.workspace }}/qit-results/phpcompatibility.txt"
+
+      - name: Run PHPStan test
+        if: ${{ inputs.test-phpstan == 'true' }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          ~/.composer/vendor/bin/qit run:phpstan \
+            "${{ env.EXTENSION_SLUG }}" \
+            --zip="${{ env.ZIP_FILE_PATH }}" \
+            --wordpress_version="${{ env.WP_VERSION }}" \
+            --woocommerce_version="${{ env.WC_VERSION }}" \
+            ${{ env.WAIT_FLAG }} \
+            ${{ env.EXTRA_OPTIONS }} \
+            -n \
+            > "${{ github.workspace }}/qit-results/phpstan.txt"
+
+      - name: Run security test
+        if: ${{ inputs.test-security == 'true' }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          ~/.composer/vendor/bin/qit run:security \
+            "${{ env.EXTENSION_SLUG }}" \
+            --zip="${{ env.ZIP_FILE_PATH }}" \
+            ${{ env.WAIT_FLAG }} \
+            ${{ env.EXTRA_OPTIONS }} \
+            -n \
+            > "${{ github.workspace }}/qit-results/security.txt"
+
+      - name: Run plugin check test
+        if: ${{ inputs.test-plugin-check == 'true' }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          ~/.composer/vendor/bin/qit run:plugin-check \
+            "${{ env.EXTENSION_SLUG }}" \
+            --zip="${{ env.ZIP_FILE_PATH }}" \
+            ${{ env.WAIT_FLAG }} \
+            ${{ env.EXTRA_OPTIONS }} \
+            -n \
+            > "${{ github.workspace }}/qit-results/plugin-check.txt"
+
+      - name: Upload QIT results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qit-results-${{ github.run_id }}
+          path: ${{ github.workspace }}/qit-results

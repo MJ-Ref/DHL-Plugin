@@ -692,7 +692,8 @@ class API_Client extends Abstract_API_Client {
 			new Address_Validator(
 				$destination_address,
 				$access_token,
-				$this->shipping_method->get_option( 'environment', 'test' )
+				$this->shipping_method->get_option( 'environment', 'test' ),
+				$this->shipping_method->is_debug_mode_enabled()
 			)
 		);
 		$this->get_address_validator()->validate();

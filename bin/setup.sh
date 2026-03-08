@@ -1,39 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# WooCommerce DHL Shipping Setup Script
-# This script sets up the development environment for the WooCommerce DHL Shipping plugin.
+set -euo pipefail
 
 echo "Setting up WooCommerce DHL Shipping plugin..."
 
-# Check if Composer is installed
-if ! command -v composer &> /dev/null; then
-    echo "Error: Composer is not installed. Please install Composer first."
-    echo "Visit https://getcomposer.org/download/ for installation instructions."
-    exit 1
+if ! command -v composer >/dev/null 2>&1; then
+	echo "Error: Composer is not installed. Please install Composer first."
+	echo "Visit https://getcomposer.org/download/ for installation instructions."
+	exit 1
 fi
 
-# Install Composer dependencies
+if ! command -v npm >/dev/null 2>&1; then
+	echo "Error: npm is not installed. Please install Node.js/npm first."
+	echo "Visit https://nodejs.org/ for installation instructions."
+	exit 1
+fi
+
 echo "Installing Composer dependencies..."
 composer install
 
-# Create necessary directories if they don't exist
-echo "Creating necessary directories..."
-mkdir -p dist/css
-mkdir -p dist/js
-mkdir -p languages
+echo "Installing npm dependencies..."
+npm ci
 
-# Check if dist/css/dhl-admin.css doesn't exist, copy from assets
-if [ ! -f dist/css/dhl-admin.css ]; then
-    echo "Copying CSS files to dist directory..."
-    cp assets/css/dhl-admin.css dist/css/
-fi
-
-# Check if dist/js files don't exist, copy from assets
-if [ ! -f dist/js/dhl-admin.js ]; then
-    echo "Copying JS files to dist directory..."
-    cp assets/js/dhl-admin.js dist/js/
-    cp assets/js/checkout.js dist/js/
-fi
-
-echo "Setup complete!"
-echo "To use the plugin, configure your WooCommerce shipping settings and enter your DHL API credentials."
+echo "Setup complete."
+echo "Next steps:"
+echo "  - Run tests with: composer run-script test"
+echo "  - Run linting with: composer run-script phpcs"
+echo "  - Build a release zip with: npm run build"

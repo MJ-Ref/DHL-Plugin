@@ -12,6 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Get box settings.
 $boxes = $this->get_option( 'boxes', array() );
 
+if ( ! is_array( $boxes ) ) {
+	$boxes = array();
+}
+
 ?>
 <tr valign="top" class="dhl-box-packing">
 	<th scope="row" class="titledesc">
@@ -36,24 +40,30 @@ $boxes = $this->get_option( 'boxes', array() );
 				<tbody>
 					<?php if ( ! empty( $boxes ) ) : ?>
 						<?php foreach ( $boxes as $key => $box ) : ?>
+							<?php
+							if ( ! is_array( $box ) ) {
+								continue;
+							}
+							?>
 							<tr class="wc-dhl-box-row">
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][name]" value="<?php echo esc_attr( $box['name'] ); ?>" />
+									<input type="hidden" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][id]" value="<?php echo esc_attr( $box['id'] ?? $key ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][name]" value="<?php echo esc_attr( $box['name'] ?? '' ); ?>" />
 								</td>
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][length]" value="<?php echo esc_attr( $box['length'] ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][length]" value="<?php echo esc_attr( $box['length'] ?? '' ); ?>" />
 								</td>
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][width]" value="<?php echo esc_attr( $box['width'] ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][width]" value="<?php echo esc_attr( $box['width'] ?? '' ); ?>" />
 								</td>
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][height]" value="<?php echo esc_attr( $box['height'] ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][height]" value="<?php echo esc_attr( $box['height'] ?? '' ); ?>" />
 								</td>
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][box_weight]" value="<?php echo esc_attr( $box['box_weight'] ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][box_weight]" value="<?php echo esc_attr( $box['box_weight'] ?? '' ); ?>" />
 								</td>
 								<td>
-									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][max_weight]" value="<?php echo esc_attr( $box['max_weight'] ); ?>" />
+									<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][max_weight]" value="<?php echo esc_attr( $box['max_weight'] ?? '' ); ?>" />
 								</td>
 								<td>
 									<input type="checkbox" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[<?php echo esc_attr( $key ); ?>][enabled]" <?php checked( ! empty( $box['enabled'] ) ); ?> value="1" />
@@ -66,6 +76,7 @@ $boxes = $this->get_option( 'boxes', array() );
 					<?php endif; ?>
 					<tr class="wc-dhl-box-row template" style="display: none;">
 						<td>
+							<input type="hidden" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[template][id]" value="template" disabled />
 							<input type="text" name="<?php echo esc_attr( $this->get_field_key( 'boxes' ) ); ?>[template][name]" value="" disabled />
 						</td>
 						<td>

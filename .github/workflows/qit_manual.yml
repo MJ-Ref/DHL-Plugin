@@ -1,0 +1,77 @@
+name: QIT Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      wp_version:
+        description: WordPress version for QIT
+        required: true
+        default: stable
+        type: string
+      wc_version:
+        description: WooCommerce version for QIT
+        required: true
+        default: stable
+        type: string
+      php_version:
+        description: PHP version for QIT
+        required: true
+        default: '8.1'
+        type: string
+      activation:
+        description: Run activation test
+        required: true
+        default: true
+        type: boolean
+      phpcompatibility:
+        description: Run PHP compatibility test
+        required: true
+        default: true
+        type: boolean
+      phpstan:
+        description: Run QIT PHPStan test
+        required: true
+        default: true
+        type: boolean
+      plugin_check:
+        description: Run plugin-check test
+        required: true
+        default: true
+        type: boolean
+      security:
+        description: Run security test
+        required: true
+        default: false
+        type: boolean
+      options:
+        description: Extra QIT options
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build:
+    name: Build artifact for QIT
+    uses: ./.github/workflows/build.yml
+    with:
+      plugin_name: woocommerce-shipping-dhl
+
+  qit:
+    name: Run QIT against packaged artifact
+    needs: build
+    uses: ./.github/workflows/qit_runner.yml
+    with:
+      extension: woocommerce-shipping-dhl
+      artifact: ${{ needs.build.outputs.plugin_name }}
+      wp-version: ${{ github.event.inputs.wp_version }}
+      wc-version: ${{ github.event.inputs.wc_version }}
+      php-version: ${{ github.event.inputs.php_version }}
+      test-activation: ${{ github.event.inputs.activation && 'true' || 'false' }}
+      test-phpcompatibility: ${{ github.event.inputs.phpcompatibility && 'true' || 'false' }}
+      test-phpstan: ${{ github.event.inputs.phpstan && 'true' || 'false' }}
+      test-plugin-check: ${{ github.event.inputs.plugin_check && 'true' || 'false' }}
+      test-security: ${{ github.event.inputs.security && 'true' || 'false' }}
+      options: ${{ github.event.inputs.options }}
+    secrets:
+      PARTNER_USER: ${{ secrets.PARTNER_USER }}
+      PARTNER_SECRET: ${{ secrets.PARTNER_SECRET }}

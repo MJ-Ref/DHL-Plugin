@@ -1,54 +1,82 @@
 # DHL API Upgrades Guide
 
-This document provides guidance on handling updates to the DHL Express MyDHL API in the WooCommerce DHL Shipping plugin.
+This document describes how to upgrade the plugin when DHL changes the MyDHL API version or behavior.
 
-## Current API Version
+## Current Version
 
-The plugin currently uses DHL Express MyDHL API version `2.12.1`.
+- Plugin constant: `WC_SHIPPING_DHL_API_VERSION`
+- Current value: `2.12.1`
+- Defined in: `woocommerce-shipping-dhl.php`
 
-## How API Versioning Works in the Plugin
+## Current Endpoint Coverage
 
-1. The API version is defined as a constant in `woocommerce-shipping-dhl.php`:
-   ```php
-   define( 'WC_SHIPPING_DHL_API_VERSION', '2.12.1' );
-   ```
+The current codebase uses these MyDHL surfaces:
 
-2. The API client sends this version in the header of each request:
-   ```php
-   'x-version' => WC_SHIPPING_DHL_API_VERSION
-   ```
+- `POST /rates`
+- `GET /address-validate`
+- `POST /shipments`
+- `POST /pickups`
+- `GET /shipments/{shipmentTrackingNumber}/tracking`
+- `GET /shipments/{shipmentTrackingNumber}/proof-of-delivery`
+- `GET /servicepoints`
+- `POST /landed-cost`
 
-## Upgrading the API Version
+When upgrading the API version, treat all of those surfaces as part of the compatibility matrix.
 
-When DHL releases a new API version:
+## Request Conventions Used by the Plugin
 
-1. Review the [DHL API Release Notes](https://developer.dhl.com/documentation) for changes
-2. Update the `WC_SHIPPING_DHL_API_VERSION` constant in `woocommerce-shipping-dhl.php`
-3. Modify the API client classes in `includes/api/rest/` to accommodate any new parameters or endpoints
-4. Update tests to verify compatibility
-5. Update this document with the new version and any important changes
+- authentication: Basic Auth header built from DHL API user and API key
+- version negotiation: `x-version: WC_SHIPPING_DHL_API_VERSION`
+- environments:
+  - `https://express.api.dhl.com/mydhlapi` for production
+  - `https://express.api.dhl.com/mydhlapi/test` for test
 
-## Important Considerations
+## Upgrade Checklist
 
-- **Breaking Changes:** Be especially careful with breaking changes in the API
-- **New Features:** Document any new features made available through API upgrades
-- **Endpoint Changes:** Note if any endpoint URLs have changed
-- **Rate Limiting:** Check if rate limiting policies have changed
+1. Review DHL release notes and changelog for the target API version.
+2. Update `WC_SHIPPING_DHL_API_VERSION` in `woocommerce-shipping-dhl.php`.
+3. Re-verify request/response compatibility in:
+   - `includes/api/rest/class-api-client.php`
+   - `includes/api/rest/class-address-validator.php`
+   - `includes/api/rest/class-shipment-client.php`
+4. Recheck endpoint-specific payload assumptions:
+   - rate request packaging
+   - shipment package construction
+   - pickup timing payloads
+   - tracking response parsing
+   - proof-of-delivery document handling
+   - service-point query parameters
+   - landed-cost item/breakdown parsing
+5. Run the local validation suite:
 
-## Key API Endpoints
+```bash
+composer run-script test
+composer run-script phpcs
+composer run-script phpstan
+vendor/bin/phpcs --extensions=php --standard=.phpcs.security.xml includes woocommerce-shipping-dhl.php bin
+npm run build
+```
 
-The plugin uses the following DHL Express API endpoints:
+6. Recheck cache and debug assumptions for non-mutating lookups:
+   - address validation
+   - service-point lookup
+   - landed-cost estimates
+7. Re-run staging UAT for any endpoint whose schema or semantics changed.
+8. Update `README.md`, `docs/DEVELOPER.md`, and `docs/STATUS.md` if behavior or support scope changed.
 
-- **Rates API**: Used to obtain shipping rates
-  - Endpoint: `/rates`
-  - Method: POST
+## High-Risk Change Areas
 
-- **Address Validation**: Used to validate shipping addresses
-  - Endpoint: `/address-validate`
-  - Method: GET
+Pay extra attention to:
 
-## API Documentation
+- auth/header changes
+- renamed products or service codes
+- customs/declarable-content schema changes
+- tracking response structure changes
+- document encoding changes for labels/POD
+- landed-cost breakdown type changes
+- rate limiting or error-body format changes
 
-For the full API documentation, refer to:
-- [DHL Developer Portal](https://developer.dhl.com/)
-- [MyDHL API Documentation](https://developer.dhl.com/api-reference/mydhl-api) 
+## Source References
+
+- DHL Developer Portal: <https://developer.dhl.com/>
+- MyDHL API overview: <https://developer.dhl.com/api-reference/mydhl-api-dhl-express>

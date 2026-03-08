@@ -1,4 +1,4 @@
-# WooCommerce DHL Shipping - Developer Documentation
+# DHL Express Shipping for WooCommerce - Developer Documentation
 
 This document is the current technical reference for the plugin implementation in this repository.
 

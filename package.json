@@ -1,7 +1,7 @@
 {
   "name": "woocommerce-shipping-dhl",
   "version": "1.0.0",
-  "description": "WooCommerce DHL Shipping integration",
+  "description": "DHL Express Shipping for WooCommerce integration",
   "author": "Automattic",
   "license": "GPL-3.0-or-later",
   "keywords": [

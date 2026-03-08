@@ -1,4 +1,4 @@
-# DHL Live UAT Report (2026-03-07)
+# DHL Express Shipping UAT Report (2026-03-07)
 
 ## Summary
 
@@ -24,7 +24,7 @@ Because the staging method cannot be configured reliably, the remaining carrier-
 
 - Staging site: `https://laura-johnson-woo.mystagingwebsite.com`
 - WordPress admin access: confirmed
-- Active plugin: `WooCommerce DHL Shipping` `1.0.0`
+- Active plugin: `DHL Express Shipping for WooCommerce` `1.0.0`
 - Local repo build reference: commit `0a657b4`
 - Local execution date: `2026-03-07`
 
@@ -35,7 +35,7 @@ Because the staging method cannot be configured reliably, the remaining carrier-
 Confirmed:
 
 - WordPress admin login works for the staging site.
-- `WooCommerce DHL Shipping` is installed and active.
+- `DHL Express Shipping for WooCommerce` is installed and active.
 - WooCommerce is active.
 
 ### 2. Shipping-zone inspection

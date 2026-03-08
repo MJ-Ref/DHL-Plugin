@@ -1,6 +1,6 @@
-# DHL Shipping Live Rates for WooCommerce
+# DHL Express Shipping for WooCommerce
 
-This plugin integrates DHL Express live rates and shipment operations with your WooCommerce store.
+This plugin integrates DHL Express live rates, shipment creation, pickups, tracking, and post-purchase shipping operations with your WooCommerce store.
 
 ## Features
 
@@ -144,11 +144,9 @@ Note: the browser smoke helper uses the local Codex Playwright wrapper under `$C
 ## Documentation
 
 - Current repo status: [`docs/STATUS.md`](docs/STATUS.md)
-- Production backlog: [`docs/PRODUCTION_BACKLOG_2026-03-07.md`](docs/PRODUCTION_BACKLOG_2026-03-07.md)
 - Staging UAT runbook: [`docs/STAGING_UAT_RUNBOOK.md`](docs/STAGING_UAT_RUNBOOK.md)
 - Developer reference: [`docs/DEVELOPER.md`](docs/DEVELOPER.md)
 - API upgrade guide: [`docs/API-UPGRADES.md`](docs/API-UPGRADES.md)
-- Latest staging UAT report: [`docs/LIVE_DHL_UAT_2026-03-07.md`](docs/LIVE_DHL_UAT_2026-03-07.md)
 
 ## Support
 

@@ -1,6 +1,6 @@
 {
     "name": "woocommerce/woocommerce-shipping-dhl",
-    "description": "WooCommerce DHL Shipping allows a store to obtain shipping rates for your orders dynamically via the DHL Express API.",
+    "description": "DHL Express Shipping for WooCommerce provides live rates, shipment creation, pickups, tracking, and related DHL Express workflows through the MyDHL API.",
     "homepage": "https://woocommerce.com/products/dhl-shipping-method/",
     "type": "wordpress-plugin",
     "license": "GPL-3.0-or-later",

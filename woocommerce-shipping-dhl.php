@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: WooCommerce DHL Shipping
+ * Plugin Name: DHL Express Shipping for WooCommerce
  * Plugin URI: https://woocommerce.com/products/dhl-shipping-method/
- * Description: WooCommerce DHL Shipping allows a store to obtain shipping rates for your orders dynamically via the DHL Express API.
+ * Description: DHL Express Shipping for WooCommerce provides live rates, shipment creation, pickups, tracking, and related DHL Express workflows through the MyDHL API.
  * Version: 1.0.0
  * Author: WooCommerce
  * Author URI: https://woocommerce.com
@@ -96,7 +96,7 @@ function wc_shipping_dhl_show_woocommerce_deactivated_notice() {
 	echo wp_kses_post(
 		sprintf(
 			// translators: %1$s: WooCommerce link, %2$s: Add plugins link.
-			__( 'WooCommerce DHL Shipping requires %1$s to be installed and active. Install and activate it %2$s.', 'woocommerce-shipping-dhl' ),
+			__( 'DHL Express Shipping for WooCommerce requires %1$s to be installed and active. Install and activate it %2$s.', 'woocommerce-shipping-dhl' ),
 			'<a href="https://woocommerce.com/" target="_blank" rel="noopener noreferrer">WooCommerce</a>',
 			'<a href="' . esc_url( admin_url( '/plugin-install.php?s=woocommerce&tab=search&type=term' ) ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'here', 'woocommerce-shipping-dhl' ) . '</a>'
 		)

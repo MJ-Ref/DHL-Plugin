@@ -74,7 +74,7 @@ class Install {
 		delete_transient( self::UPGRADE_NOTICE_TRANSIENT );
 
 		echo '<div class="notice notice-success is-dismissible"><p>';
-		echo esc_html__( 'WooCommerce DHL Shipping updated its stored settings format and normalized existing DHL instances. Review your DHL shipping methods before the next staging or production run.', 'woocommerce-shipping-dhl' );
+		echo esc_html__( 'DHL Express Shipping for WooCommerce updated its stored settings format and normalized existing DHL instances. Review your DHL shipping methods before the next staging or production run.', 'woocommerce-shipping-dhl' );
 		echo '</p></div>';
 	}
 
